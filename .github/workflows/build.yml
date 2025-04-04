@@ -1,27 +1,25 @@
-name: Go
+name: build
 
-on: [push]
+on:
+  push:
 
 jobs:
   build:
+    name: build
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    
     strategy:
       matrix:
-        go-version: [ '1.24.x' ]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-
-      - name: Display Go version
-        run: go version
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Install dependencies
-        run: go get .
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build
-        run: go build -v ./...
+        run: cargo build
+  
