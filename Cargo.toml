@@ -3,9 +3,6 @@ name = "extract-speech"
 version = "0.3.0"
 edition = "2021"
 
-[features]
-default = ["accelerate-src"]
-
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 
@@ -16,7 +13,7 @@ candle-core = { version = "0.8.4" }
 # candle-core = { version = "0.8.4", features = ["accelerate"] }
 candle-onnx = { version = "0.8.4" }
 
-accelerate-src = { version = "0.3.2", optional = true }
+accelerate-src = { version = "0.3.2", optional = true, default-features = false }
 
 ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }
 # ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda"] }
