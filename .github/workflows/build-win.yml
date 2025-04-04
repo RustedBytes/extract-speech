@@ -1,0 +1,25 @@
+name: build windows
+
+on:
+  push:
+
+jobs:
+  build:
+    name: build windows
+
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "23.x"
+
+      - name: Build
+        run: cargo build
