@@ -1,2 +1,3 @@
-# audio-splitter
-Split audio files by Voice Activity Detection with ease
+# extract-speech
+
+Extract speech from audio files by a Voice Activity Detection model
