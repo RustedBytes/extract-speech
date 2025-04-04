@@ -17,7 +17,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install protobuf
-        run: apt-get update && apt-get install protobuf
+        run: apt-get install protobuf
 
       - name: Build
         run: cargo build
