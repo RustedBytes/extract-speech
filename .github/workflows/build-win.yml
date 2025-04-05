@@ -21,5 +21,8 @@ jobs:
         with:
           version: "23.x"
 
+      - name: Install cmake
+        run: winget install cmake
+
       - name: Build
         run: cargo build
