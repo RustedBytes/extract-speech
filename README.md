@@ -10,6 +10,13 @@ Extract speech from audio files by a Voice Activity Detection model
 [![build macos](https://github.com/crs-org/extract-speech/actions/workflows/build-macos.yml/badge.svg)](https://github.com/crs-org/extract-speech/actions/workflows/build-macos.yml)
 [![build windows](https://github.com/crs-org/extract-speech/actions/workflows/build-win.yml/badge.svg)](https://github.com/crs-org/extract-speech/actions/workflows/build-win.yml)
 
+## Usage
+
+```
+LD_LIBRARY_PATH=./libonnxruntime.so.1.20.0-linux/ ./extract-speech --runtime onnxruntime --model-path ./models/silero_vad_v5.onnx --process-audio ../test_16khz.wav --output test --output-format wav
+```
+
+
 ## Build
 
 You need: cargo, rustc, cross, podman, goreleaser.
