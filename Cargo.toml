@@ -15,7 +15,9 @@ candle-onnx = { version = "0.8.4" }
 
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }
 
-ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }
+ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray"] }
+# ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray"] }
+# ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }
 # ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda"] }
 
 ndarray = "0.16"

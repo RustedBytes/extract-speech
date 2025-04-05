@@ -4,7 +4,8 @@ use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
 use ort::{
     // execution_providers::{CoreMLExecutionProvider, CPUExecutionProvider},
     // execution_providers::{CUDAExecutionProvider, CPUExecutionProvider},
-    execution_providers::{CPUExecutionProvider, XNNPACKExecutionProvider},
+    // execution_providers::{CPUExecutionProvider, XNNPACKExecutionProvider},
+    execution_providers::CPUExecutionProvider,
     // execution_providers::CPUExecutionProvider,
     session::{builder::GraphOptimizationLevel, Session, SessionInputs},
 };
@@ -25,7 +26,7 @@ impl Silero {
     pub fn new(vad_params: utils::VadParams, model_path: PathBuf) -> Result<Self, anyhow::Error> {
         let execution_providers = [
             // CoreMLExecutionProvider::default().build(),
-            XNNPACKExecutionProvider::default().build(),
+            // XNNPACKExecutionProvider::default().build(),
             // CUDAExecutionProvider::default().build(),
             CPUExecutionProvider::default().build(),
         ];
