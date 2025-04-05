@@ -18,9 +18,9 @@ builds:
     tool: cross
     targets:
       - x86_64-unknown-linux-gnu
-      # - x86_64-apple-darwin
-      # - aarch64-apple-darwin
-      # - aarch64-unknown-linux-gnu
+      - x86_64-apple-darwin
+      - aarch64-apple-darwin
+      - aarch64-unknown-linux-gnu
 
 universal_binaries:
   - replace: false
