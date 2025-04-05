@@ -8,3 +8,5 @@ RUN wget "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onn
     mv onnxruntime-linux-aarch64-1.20.0 onnxruntime && \
     mv onnxruntime/include/* /usr/include/ && \
     mv onnxruntime/lib/* /usr/lib/aarch64-linux-gnu/
+
+ENV ORT_LIB_LOCATION=/usr/lib/aarch64-linux-gnu
