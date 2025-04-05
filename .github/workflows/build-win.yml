@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Use cmake
+        run: cmake --version
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
