@@ -21,8 +21,13 @@ jobs:
         with:
           version: "23.x"
 
-      - name: Install cmake
-        run: winget install cmake
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.16.x'
+      
+      - name: Use cmake
+        run: cmake --version
 
       - name: Build
         run: cargo build
