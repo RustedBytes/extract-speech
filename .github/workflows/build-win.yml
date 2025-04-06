@@ -16,12 +16,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use cmake
-        run: cmake --version
-    
-      - name: Use clang
-        run: clang --version
-      
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
