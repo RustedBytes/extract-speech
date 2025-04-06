@@ -3,6 +3,9 @@ name = "extract-speech"
 version = "0.3.0"
 edition = "2021"
 
+[patch.crates-io]
+audiopus_sys = { git = "https://github.com/ThatMG393/audiopus-sys-updated.git", branch = "dev" }
+
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 
