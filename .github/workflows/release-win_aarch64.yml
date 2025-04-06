@@ -39,7 +39,7 @@ jobs:
         run: cargo build --target aarch64-pc-windows-msvc --release
 
       - name: archive extract-speech
-        run: Compress-Archive -Path target/release/extract-speech.exe -DestinationPath C:\Users\runneradmin\extract-audio_aarch64_msvc_windows.zip
+        run: Compress-Archive -Path target/ -DestinationPath C:\Users\runneradmin\extract-audio_aarch64_msvc_windows.zip
 
       - name: upload release artifact
         uses: actions/upload-artifact@v4
