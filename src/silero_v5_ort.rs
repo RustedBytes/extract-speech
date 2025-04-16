@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use log::debug;
 use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
 use ort::{
-    // execution_providers::CoreMLExecutionProvider,
-    // execution_providers::CUDAExecutionProvider,
-    // execution_providers::XNNPACKExecutionProvider,
-    execution_providers::CPUExecutionProvider,
+    execution_providers::ExecutionProviderDispatch,
     session::{builder::GraphOptimizationLevel, Session, SessionInputs},
 };
 
@@ -23,28 +20,14 @@ pub struct Silero {
 }
 
 impl Silero {
-    pub fn new(vad_params: utils::VadParams, model_path: PathBuf) -> Result<Self, anyhow::Error> {
-        let execution_providers = [
-            // CoreMLExecutionProvider::default().build(),
-            // XNNPACKExecutionProvider::default().build(),
-            // CUDAExecutionProvider::default().build(),
-            CPUExecutionProvider::default().build(),
-        ];
-
-        let session = Session::builder()
-            .unwrap()
-            .with_optimization_level(GraphOptimizationLevel::Level1)
-            .unwrap()
-            .with_intra_threads(1)
-            .unwrap()
-            .with_inter_threads(1)
-            .unwrap()
-            .with_parallel_execution(false)
-            .unwrap()
-            .with_execution_providers(execution_providers)
-            .unwrap()
-            .commit_from_file(model_path)
-            .unwrap();
+    pub fn new(vad_params: utils::VadParams, execution_providers: Vec<ExecutionProviderDispatch>, model_path: PathBuf) -> Result<Self, anyhow::Error> {
+        let session = Session::builder()?
+            .with_optimization_level(GraphOptimizationLevel::Level3)?
+            .with_intra_threads(1)?
+            .with_inter_threads(1)?
+            .with_parallel_execution(false)?
+            .with_execution_providers(execution_providers)?
+            .commit_from_file(model_path)?;
 
         let sr_per_ms = vad_params.sample_rate / 1000;
         let frame_size_samples = vad_params.frame_size * sr_per_ms;
