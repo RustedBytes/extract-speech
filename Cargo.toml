@@ -10,7 +10,6 @@ audiopus_sys = { git = "https://github.com/crs-org/audiopus-sys-updated.git", br
 clap = { version = "4.5.36", features = ["derive"] }
 
 symphonia = { version = "0.5.4", features = ["all-formats", "all-codecs", "opt-simd"] }
-# symphonia = { version = "0.5.4", features = ["all-formats", "all-codecs"] }
 
 candle-core = { version = "0.8.4" }
 # candle-core = { version = "0.8.4", features = ["accelerate"] }
@@ -18,10 +17,8 @@ candle-onnx = { version = "0.8.4" }
 
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }
 
-ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray"] }
-# ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray"] }
+ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda", "tensorrt"] }
 # ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }
-# ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda"] }
 
 ndarray = "0.16"
 
