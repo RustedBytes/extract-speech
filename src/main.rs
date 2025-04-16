@@ -10,12 +10,12 @@ use rayon::prelude::*;
 
 mod audio;
 mod opus;
+mod resampler;
 mod silero_v5;
 mod silero_v5_ort;
 pub(crate) mod utils;
 mod vad_iter;
 mod vad_iter_ort;
-mod resampler;
 use hound;
 
 use crate::audio::load_samples_from_audio_file;
@@ -208,7 +208,12 @@ fn main() -> Result<()> {
         }
         Runtime::ONNXRUNTIME => {
             let dylib_path = args.dylib_path.clone().unwrap();
-            ort::init_from(dylib_path.to_str().ok_or_else(|| anyhow::anyhow!("Invalid path: dylib_path"))?).commit()?;
+            ort::init_from(
+                dylib_path
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("Invalid path: dylib_path"))?,
+            )
+            .commit()?;
 
             // Create the VAD model
             let start: std::time::Instant = std::time::Instant::now();
@@ -250,10 +255,8 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
 
             match args.output_type {
                 OutputType::FILES => {
-                    speeches
-                        .par_iter()
-                        .enumerate()
-                        .try_for_each(|(idx, speech)| -> Result<()> {
+                    speeches.par_iter().enumerate().try_for_each(
+                        |(idx, speech)| -> Result<()> {
                             let current_ts = Utc::now().timestamp_millis();
                             let filename = format!("{}/{}_{}.wav", directory, current_ts, idx);
                             let mut writer = hound::WavWriter::create(filename, spec)?;
@@ -268,7 +271,8 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                             writer.finalize()?;
 
                             Ok(())
-                        })?;
+                        },
+                    )?;
                 }
                 OutputType::CONCATENATED => {
                     let gathered_speeches = speeches
@@ -295,10 +299,8 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
         OutputFormat::OPUS | OutputFormat::OGG => {
             match args.output_type {
                 OutputType::FILES => {
-                    speeches
-                        .par_iter()
-                        .enumerate()
-                        .try_for_each(|(idx, speech)| -> Result<()> {
+                    speeches.par_iter().enumerate().try_for_each(
+                        |(idx, speech)| -> Result<()> {
                             let current_ts = Utc::now().timestamp_millis();
                             let filename =
                                 PathBuf::from(format!("{}/{}_{}.ogg", directory, current_ts, idx));
@@ -309,7 +311,8 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                                 .map_err(|e| anyhow::anyhow!(e))?;
 
                             Ok(())
-                        })?;
+                        },
+                    )?;
                 }
                 OutputType::CONCATENATED => {
                     let gathered_speeches = speeches

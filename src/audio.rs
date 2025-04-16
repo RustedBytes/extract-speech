@@ -3,6 +3,7 @@ use std::{fs::File, path::PathBuf};
 
 // use multiversion::multiversion;
 
+use log::{info, warn};
 use symphonia::core::errors::Error;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::meta::MetadataOptions;
@@ -46,13 +47,25 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
     match track.codec_params.channels {
         Some(channels) => {
             if channels.count() > 1 {
-                return Err(anyhow::anyhow!("Only mono audio files are supported"));
+                warn!("Stereo channels detected, will be converted to mono");
+            }
+
+            if channels.count() > 2 {
+                return Err(anyhow::anyhow!(
+                    "Unsupported number of channels: {}. Only mono and stereo are supported.",
+                    channels.count()
+                ));
             }
         }
         None => {
             return Err(anyhow::anyhow!("No channel information available"));
         }
     }
+
+    let is_stereo = track
+        .codec_params
+        .channels
+        .map_or(false, |channels| channels.count() > 1);
 
     // Create a decoder for the track.
     let mut decoder = symphonia::default::get_codecs()
@@ -76,7 +89,7 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
                     }
                 }
 
-                println!("Error loading next packet: {}", err);
+                info!("Error loading next packet: {}", err);
 
                 break;
             }
@@ -124,9 +137,21 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
         }
     }
 
+    if samples.is_empty() {
+        return Err(anyhow::anyhow!("No samples found in the audio file"));
+    }
+
+    // If it's strereo, convert to mono
+    if is_stereo {
+        samples = samples
+            .chunks_exact(2)
+            .map(|chunk| chunk.iter().sum::<f32>() / 2 as f32)
+            .collect::<Vec<_>>();
+    }
+
     const REQUIRED_SAMPLE_RATE: u32 = 16_000;
     if sample_rate != REQUIRED_SAMPLE_RATE {
-        println!(
+        info!(
             "Sample rate mismatch: expected {}, got {}, resampling...",
             REQUIRED_SAMPLE_RATE, sample_rate
         );

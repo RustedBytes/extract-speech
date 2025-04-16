@@ -39,6 +39,7 @@ anyhow = "*"
 chrono = "*"
 
 rayon = "*"
+log = "0.4.27"
 
 [profile.release]
 opt-level = 3
