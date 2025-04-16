@@ -15,6 +15,7 @@ mod silero_v5_ort;
 pub(crate) mod utils;
 mod vad_iter;
 mod vad_iter_ort;
+mod resampler;
 use hound;
 
 use crate::audio::load_samples_from_audio_file;

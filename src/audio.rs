@@ -10,9 +10,7 @@ use symphonia::core::{
     audio::SampleBuffer, codecs::DecoderOptions, io::MediaSourceStream, probe::Hint,
 };
 
-pub(crate) mod resampler;
-
-use resampler::resample;
+use crate::resampler::resample;
 
 // #[multiversion(targets("x86_64+avx", "aarch64+neon"))]
 pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::Error> {

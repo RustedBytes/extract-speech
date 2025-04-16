@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::audio::resampler::resample;
+use crate::resampler::resample;
 
 // This must be an allowed value among 120, 240, 480, 960, 1920, and 2880.
 // Using a different value would result in a BadArg "invalid argument" error when calling encode.
