@@ -1,9 +1,14 @@
 serviceaccount.json
 
+onnxruntime-osx-arm64-1.20.0
+
 cache.db
 session.dat
 
 transcript.txt
+
+models/
+test/
 
 bot
 

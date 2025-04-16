@@ -63,6 +63,10 @@ struct Args {
     #[clap(value_enum, default_value_t = Runtime::CANDLE)]
     runtime: Runtime,
 
+    /// Path to the ONNX runtime dynamic library
+    #[arg(long)]
+    dylib_path: Option<PathBuf>,
+
     /// The source audio file path
     #[arg(long)]
     source_audio: Option<PathBuf>,
@@ -203,6 +207,9 @@ fn main() -> Result<()> {
             write_results(args, &speeches_result, source_samples)
         }
         Runtime::ONNXRUNTIME => {
+            let dylib_path = args.dylib_path.clone().unwrap();
+            ort::init_from(dylib_path.to_str().ok_or_else(|| anyhow::anyhow!("Invalid path: dylib_path"))?).commit()?;
+
             // Create the VAD model
             let start: std::time::Instant = std::time::Instant::now();
             let silero = silero_v5_ort::Silero::new(vad_params.clone(), args.model_path.clone())?;
