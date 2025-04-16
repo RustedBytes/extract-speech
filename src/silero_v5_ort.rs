@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
+use log::debug;
 use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
 use ort::{
-    // execution_providers::{CoreMLExecutionProvider, CPUExecutionProvider},
-    // execution_providers::{CUDAExecutionProvider, CPUExecutionProvider},
-    // execution_providers::{CPUExecutionProvider, XNNPACKExecutionProvider},
+    // execution_providers::CoreMLExecutionProvider,
+    // execution_providers::CUDAExecutionProvider,
+    // execution_providers::XNNPACKExecutionProvider,
     execution_providers::CPUExecutionProvider,
-    // execution_providers::CPUExecutionProvider,
     session::{builder::GraphOptimizationLevel, Session, SessionInputs},
 };
 
@@ -98,17 +98,17 @@ impl Silero {
         ]?;
 
         if self.vad_params.debug {
-            println!(
+            debug!(
                 "input: {:?}, dtype: {:?}",
                 values[0].shape(),
                 values[0].dtype()
             );
-            println!(
+            debug!(
                 "state: {:?}, dtype: {:?}",
                 values[1].shape(),
                 values[1].dtype()
             );
-            println!(
+            debug!(
                 "sample_rate: {:?}, dtype: {:?}",
                 values[2].shape(),
                 values[2].dtype()

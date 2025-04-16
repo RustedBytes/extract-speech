@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use candle_core::{DType, Tensor};
+use log::info;
 
 use crate::utils;
 
@@ -64,7 +65,7 @@ impl Silero {
         ]);
 
         for (k, v) in &inputs {
-            println!(
+            info!(
                 "{} - {:?}: dtype: {:?}, len: {:?}",
                 k,
                 v.shape(),

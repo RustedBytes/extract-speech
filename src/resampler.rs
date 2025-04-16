@@ -1,9 +1,10 @@
 use std::num::NonZeroUsize;
 
 use fixed_resample;
+use log::info;
 
 pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Result<Vec<f32>> {
-    println!("Resampling from {} to {}", sr_in, sr_out);
+    info!("Resampling from {} to {}", sr_in, sr_out);
 
     let quality = fixed_resample::ResampleQuality::High;
 

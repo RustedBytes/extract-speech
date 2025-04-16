@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use chrono::prelude::*;
 use clap::{Parser, ValueEnum};
+use log::{debug, info};
 use rayon::prelude::*;
 
 mod audio;
@@ -109,7 +110,7 @@ fn print_model_info(model_path: PathBuf, info: ModelInfo) -> Result<()> {
 
     match info {
         ModelInfo::GRAPH => {
-            println!("{model:#?}");
+            debug!("{model:#?}");
         }
         ModelInfo::NODES => {
             for node in graph.node.iter() {
@@ -143,7 +144,7 @@ fn main() -> Result<()> {
     let start = std::time::Instant::now();
     let process_audio_path = args.process_audio.clone();
     let process_samples = load_samples_from_audio_file(process_audio_path)?;
-    println!(
+    info!(
         "Number of samples (process_audio): {:?}",
         process_samples.len()
     );
@@ -155,7 +156,7 @@ fn main() -> Result<()> {
 
         source_samples = load_samples_from_audio_file(source_audio_path)?;
 
-        println!(
+        info!(
             "Number of samples (source_audio): {:?}",
             source_samples.len()
         );
@@ -167,7 +168,7 @@ fn main() -> Result<()> {
         }
     }
 
-    println!("Retrieved audio files in: {:?}", start.elapsed());
+    info!("Retrieved audio files in: {:?}", start.elapsed());
 
     // Create the VAD params
     let vad_params = utils::VadParams {
@@ -180,7 +181,7 @@ fn main() -> Result<()> {
     match args.runtime {
         Runtime::CANDLE => {
             // Platform specific optimizations
-            println!(
+            debug!(
                 "avx: {}, neon: {}, simd128: {}, f16c: {}",
                 candle_core::utils::with_avx(),
                 candle_core::utils::with_neon(),
@@ -195,13 +196,13 @@ fn main() -> Result<()> {
             let start: std::time::Instant = std::time::Instant::now();
             let silero =
                 silero_v5::Silero::new(vad_params.clone(), args.model_path.clone(), device)?;
-            println!("Loaded the model in: {:?}", start.elapsed());
+            info!("Loaded the model in: {:?}", start.elapsed());
 
             // Do inference
             let start = std::time::Instant::now();
             let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
             let speeches_result = vad_iterator.process(process_samples.to_vec())?;
-            println!("Inference time: {:?}", start.elapsed());
+            info!("Inference time: {:?}", start.elapsed());
 
             // Write the output
             write_results(args, &speeches_result, source_samples)
@@ -218,13 +219,13 @@ fn main() -> Result<()> {
             // Create the VAD model
             let start: std::time::Instant = std::time::Instant::now();
             let silero = silero_v5_ort::Silero::new(vad_params.clone(), args.model_path.clone())?;
-            println!("Loaded the model in: {:?}", start.elapsed());
+            info!("Loaded the model in: {:?}", start.elapsed());
 
             // Do inference
             let start = std::time::Instant::now();
             let mut vad_iterator_ort = vad_iter_ort::VadIter::new(silero, vad_params);
             let speeches_result = vad_iterator_ort.process(process_samples.to_vec())?;
-            println!("Inference time: {:?}", start.elapsed());
+            info!("Inference time: {:?}", start.elapsed());
 
             // Write the output
             write_results(args, &speeches_result, source_samples)
@@ -233,7 +234,7 @@ fn main() -> Result<()> {
 }
 
 fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -> Result<()> {
-    println!("Speeches: {}", speeches.len());
+    info!("Speeches: {}", speeches.len());
 
     let output_path = args.output.unwrap();
 
@@ -294,7 +295,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                 }
             }
 
-            println!("Saved to WAV.");
+            info!("Saved to WAV.");
         }
         OutputFormat::OPUS | OutputFormat::OGG => {
             match args.output_type {
@@ -328,7 +329,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                 }
             }
 
-            println!("Saved to OPUS.");
+            info!("Saved to OPUS.");
         }
     }
 

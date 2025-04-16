@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::{silero_v5_ort::Silero, utils};
 
 #[derive(Debug)]
@@ -12,8 +14,8 @@ impl VadIter {
         let params_mixed = Params::from(params.clone());
 
         if params.debug {
-            println!("vad_params: {:?}", params);
-            println!("params_mixed: {:?}", params_mixed);
+            debug!("vad_params: {:?}", params);
+            debug!("params_mixed: {:?}", params_mixed);
         }
 
         Self {
@@ -231,7 +233,7 @@ impl State {
                 } else {
                     0
                 } as f32; // minus window_size_samples to get precise start time point.
-            println!(
+            debug!(
                 "[{:10}: {:.3} s ({:.3}) {:8}]",
                 title,
                 speech / params.sample_rate as f32,
