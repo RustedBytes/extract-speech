@@ -9,7 +9,7 @@ audiopus_sys = { git = "https://github.com/crs-org/audiopus-sys-updated.git", br
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 symphonia = { version = "0.5.4", features = ["all-formats", "all-codecs", "opt-simd"] }
-candle-core = { version = "0.8.4" }
+candle-core = { version = "0.9.0" }
 # candle-core = { version = "0.8.4", features = ["accelerate"] }
 candle-onnx = { version = "0.8.4" }
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }
