@@ -207,18 +207,40 @@ dependencies = [
  "rayon",
  "safetensors",
  "thiserror",
- "ug",
+ "ug 0.1.0",
+ "yoke",
+ "zip",
+]
+
+[[package]]
+name = "candle-core"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9f51e2ecf6efe9737af8f993433c839f956d2b6ed4fd2dd4a7c6d8b0fa667ff"
+dependencies = [
+ "byteorder",
+ "gemm 0.17.1",
+ "half",
+ "memmap2",
+ "num-traits",
+ "num_cpus",
+ "rand",
+ "rand_distr",
+ "rayon",
+ "safetensors",
+ "thiserror",
+ "ug 0.4.0",
  "yoke",
  "zip",
 ]
 
 [[package]]
 name = "candle-nn"
-version = "0.8.4"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be1160c3b63f47d40d91110a3e1e1e566ae38edddbbf492a60b40ffc3bc1ff38"
+checksum = "c1980d53280c8f9e2c6cbe1785855d7ff8010208b46e21252b978badf13ad69d"
 dependencies = [
- "candle-core",
+ "candle-core 0.9.1",
  "half",
  "num-traits",
  "rayon",
@@ -229,11 +251,11 @@ dependencies = [
 
 [[package]]
 name = "candle-onnx"
-version = "0.8.4"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8e1b5113bc7cf40371e78f5123fe428c9d47ad84869082246d2c40b12699cf"
+checksum = "8a8fa227a8176fd9b8fb58d63c908c08ad3af1503ee6fcd058be072a598044d2"
 dependencies = [
- "candle-core",
+ "candle-core 0.9.1",
  "candle-nn",
  "prost",
  "prost-build",
@@ -495,7 +517,7 @@ dependencies = [
  "accelerate-src",
  "anyhow",
  "byteorder",
- "candle-core",
+ "candle-core 0.8.4",
  "candle-onnx",
  "chrono",
  "clap",
@@ -2389,6 +2411,27 @@ name = "ug"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03719c61a91b51541f076dfdba45caacf750b230cefaa4b32d6f5411c3f7f437"
+dependencies = [
+ "gemm 0.18.2",
+ "half",
+ "libloading",
+ "memmap2",
+ "num",
+ "num-traits",
+ "num_cpus",
+ "rayon",
+ "safetensors",
+ "serde",
+ "thiserror",
+ "tracing",
+ "yoke",
+]
+
+[[package]]
+name = "ug"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90b70b37e9074642bc5f60bb23247fd072a84314ca9e71cdf8527593406a0dd3"
 dependencies = [
  "gemm 0.18.2",
  "half",
