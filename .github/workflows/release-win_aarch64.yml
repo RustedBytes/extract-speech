@@ -19,7 +19,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: add aarch64-pc-windows-msvc target
+      - name: Add aarch64-pc-windows-msvc target
         run: rustup target add aarch64-pc-windows-msvc
 
       - name: Install Protoc
@@ -38,12 +38,8 @@ jobs:
       - name: Build
         run: cargo build --target aarch64-pc-windows-msvc --release
 
-      - name: archive extract-speech
-        run: Compress-Archive -Path target/aarch64-pc-windows-msvc/release/extract-speech.exe -DestinationPath C:\Users\runneradmin\extract-speech_aarch64_msvc_windows.zip
-
-      - name: upload release artifact
+      - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extract-speech_aarch64_msvc_windows.zip
-          path: C:\Users\runneradmin\extract-speech_aarch64_msvc_windows.zip
-          
+          name: extract-speech_aarch64_msvc_windows.exe
+          path: target/aarch64-pc-windows-msvc/release/extract-speech.exe
