@@ -7,7 +7,7 @@ jobs:
   build:
     name: release linux aarch64
 
-    runs-on: ubuntu-latest-arm
+    runs-on: ubuntu-24.04-arm
 
     env:
       LIBOPUS_STATIC: "1"
