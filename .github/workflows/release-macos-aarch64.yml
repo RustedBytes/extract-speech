@@ -40,4 +40,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: extract-speech_aarch64_apple_darwin
-          path: target/aarch64-apple-darwin/extract-speech
+          path: target/aarch64-apple-darwin/release/extract-speech
