@@ -65,7 +65,7 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
     let is_stereo = track
         .codec_params
         .channels
-        .map_or(false, |channels| channels.count() > 1);
+        .is_some_and(|channels| channels.count() > 1);
 
     // Create a decoder for the track.
     let mut decoder = symphonia::default::get_codecs()
@@ -145,7 +145,7 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
     if is_stereo {
         samples = samples
             .chunks_exact(2)
-            .map(|chunk| chunk.iter().sum::<f32>() / 2 as f32)
+            .map(|chunk| chunk.iter().sum::<f32>() / 2_f32)
             .collect::<Vec<_>>();
     }
 

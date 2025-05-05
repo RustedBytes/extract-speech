@@ -1,6 +1,5 @@
 use std::num::NonZeroUsize;
 
-use fixed_resample;
 use log::info;
 
 pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Result<Vec<f32>> {
@@ -20,7 +19,7 @@ pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Resu
     let mut out_samples: Vec<f32> = Vec::with_capacity(output_frames as usize);
 
     resampler.process_interleaved(
-        &in_samples,
+        in_samples,
         // This method gets called whenever there is new resampled data.
         |data| {
             out_samples.extend_from_slice(data);
@@ -32,7 +31,7 @@ pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Resu
             // Let the resampler know that we want an exact number of output
             // frames. Otherwise the resampler may add extra padded zeros
             // to the end.
-            desired_output_frames: Some(output_frames as u64),
+            desired_output_frames: Some(output_frames),
         }),
         // Trim the padded zeros at the beginning introduced by the internal
         // resampler.

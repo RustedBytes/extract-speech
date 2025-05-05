@@ -21,35 +21,34 @@ mod silero_v5_ort;
 pub(crate) mod utils;
 mod vad_iter;
 mod vad_iter_ort;
-use hound;
 
 use crate::audio::load_samples_from_audio_file;
 use crate::opus::write_opus;
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
-    WAV,
-    OPUS,
-    OGG,
+    Wav,
+    Opus,
+    Ogg,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum ModelInfo {
-    GRAPH,
-    NODES,
+    Graph,
+    Nodes,
     IO,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum Runtime {
-    CANDLE,
-    ONNXRUNTIME,
+    Candle,
+    Onnxruntime,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputType {
-    FILES,
-    CONCATENATED,
+    Files,
+    Concatenated,
 }
 
 #[derive(Parser, Debug)]
@@ -65,7 +64,7 @@ struct Args {
 
     /// Runtime variant
     #[arg(long)]
-    #[clap(value_enum, default_value_t = Runtime::CANDLE)]
+    #[clap(value_enum, default_value_t = Runtime::Candle)]
     runtime: Runtime,
 
     /// Path to the ONNX runtime dynamic library
@@ -86,12 +85,12 @@ struct Args {
 
     /// The output type
     #[arg(long)]
-    #[clap(value_enum, default_value_t = OutputType::FILES)]
+    #[clap(value_enum, default_value_t = OutputType::Files)]
     output_type: OutputType,
 
     /// The result format
     #[arg(long)]
-    #[clap(value_enum, default_value_t = OutputFormat::WAV)]
+    #[clap(value_enum, default_value_t = OutputFormat::Wav)]
     output_format: OutputFormat,
 
     /// VAD threshold
@@ -125,10 +124,10 @@ fn print_model_info(model_path: PathBuf, info: ModelInfo) -> Result<()> {
     let graph = model.clone().graph.unwrap();
 
     match info {
-        ModelInfo::GRAPH => {
+        ModelInfo::Graph => {
             debug!("{model:#?}");
         }
-        ModelInfo::NODES => {
+        ModelInfo::Nodes => {
             for node in graph.node.iter() {
                 println!("{node:#?}");
             }
@@ -212,7 +211,7 @@ fn main() -> Result<()> {
     };
 
     match args.runtime {
-        Runtime::CANDLE => {
+        Runtime::Candle => {
             // Platform specific optimizations
             debug!(
                 "avx: {}, neon: {}, simd128: {}, f16c: {}",
@@ -238,9 +237,9 @@ fn main() -> Result<()> {
             info!("Inference time: {:?}", start.elapsed());
 
             // Write the output
-            write_results(args, &speeches_result, source_samples)
+            write_results(args, speeches_result, source_samples)
         }
-        Runtime::ONNXRUNTIME => {
+        Runtime::Onnxruntime => {
             let dylib_path = args.dylib_path.clone().unwrap();
             ort::init_from(
                 dylib_path
@@ -265,7 +264,7 @@ fn main() -> Result<()> {
             info!("Inference time: {:?}", start.elapsed());
 
             // Write the output
-            write_results(args, &speeches_result, source_samples)
+            write_results(args, speeches_result, source_samples)
         }
     }
 }
@@ -283,7 +282,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
 
     // Write the output
     match args.output_format {
-        OutputFormat::WAV => {
+        OutputFormat::Wav => {
             let spec = hound::WavSpec {
                 channels: 1,
                 sample_rate: 16_000,
@@ -292,7 +291,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
             };
 
             match args.output_type {
-                OutputType::FILES => {
+                OutputType::Files => {
                     speeches.par_iter().enumerate().try_for_each(
                         |(idx, speech)| -> Result<()> {
                             let current_ts = Utc::now().timestamp_millis();
@@ -312,7 +311,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                         },
                     )?;
                 }
-                OutputType::CONCATENATED => {
+                OutputType::Concatenated => {
                     let gathered_speeches = speeches
                         .iter()
                         .flat_map(|timestamp| {
@@ -334,9 +333,9 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
 
             info!("Saved to WAV.");
         }
-        OutputFormat::OPUS | OutputFormat::OGG => {
+        OutputFormat::Opus | OutputFormat::Ogg => {
             match args.output_type {
-                OutputType::FILES => {
+                OutputType::Files => {
                     speeches.par_iter().enumerate().try_for_each(
                         |(idx, speech)| -> Result<()> {
                             let current_ts = Utc::now().timestamp_millis();
@@ -352,7 +351,7 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                         },
                     )?;
                 }
-                OutputType::CONCATENATED => {
+                OutputType::Concatenated => {
                     let gathered_speeches = speeches
                         .iter()
                         .flat_map(|timestamp| {
