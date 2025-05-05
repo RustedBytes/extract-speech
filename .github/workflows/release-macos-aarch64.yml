@@ -23,7 +23,7 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           version: "23.x"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
