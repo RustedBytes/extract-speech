@@ -31,23 +31,3 @@ cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib
 
 cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz_stereo.wav --output test --output-format wav
 ```
-
-
-## Build
-
-You need: cargo, rustc, cross, podman, goreleaser.
-
-0. build images and increase resources for podman:
-
-```shell
-podman build --platform=linux/amd64 -f dockerfiles/Dockerfile.aarch64-unknown-linux-gnu -t aarch64-unknown-linux-gnu:my-edge .
-podman build --platform=linux/amd64 -f dockerfiles/Dockerfile.x86_64-unknown-linux-gnu -t x86_64-unknown-linux-gnu:my-edge .
-
-podman machine set --cpus 4 --memory 8192
-```
-
-1. make binaries:
-
-```shell
-goreleaser build --clean --snapshot --id extract-speech --timeout 60m
-```
