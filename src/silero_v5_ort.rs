@@ -20,7 +20,11 @@ pub struct Silero {
 }
 
 impl Silero {
-    pub fn new(vad_params: utils::VadParams, execution_providers: Vec<ExecutionProviderDispatch>, model_path: PathBuf) -> Result<Self, anyhow::Error> {
+    pub fn new(
+        vad_params: utils::VadParams,
+        execution_providers: Vec<ExecutionProviderDispatch>,
+        model_path: PathBuf,
+    ) -> Result<Self, anyhow::Error> {
         let session = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(1)?

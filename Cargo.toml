@@ -1,6 +1,6 @@
 [package]
 name = "extract-speech"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 [patch.crates-io]
@@ -9,9 +9,9 @@ audiopus_sys = { git = "https://github.com/crs-org/audiopus-sys-updated.git", br
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 symphonia = { version = "0.5.4", features = ["all-formats", "all-codecs", "opt-simd"] }
-candle-core = { version = "0.8.4" }
-# candle-core = { version = "0.8.4", features = ["accelerate"] }
-candle-onnx = { version = "0.8.4" }
+candle-core = { version = "0.9.1" }
+# candle-core = { version = "0.9.1", features = ["accelerate"] }
+candle-onnx = { version = "0.9.1" }
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }
 ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda", "tensorrt"] }
 # ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }

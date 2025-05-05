@@ -7,7 +7,10 @@ use anyhow::Result;
 use chrono::prelude::*;
 use clap::{Parser, ValueEnum};
 use log::{debug, info};
-use ort::execution_providers::{CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider, ExecutionProviderDispatch, TensorRTExecutionProvider};
+use ort::execution_providers::{
+    CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider,
+    ExecutionProviderDispatch, TensorRTExecutionProvider,
+};
 use rayon::prelude::*;
 
 mod audio;
@@ -248,7 +251,11 @@ fn main() -> Result<()> {
 
             // Create the VAD model
             let start: std::time::Instant = std::time::Instant::now();
-            let silero = silero_v5_ort::Silero::new(vad_params.clone(), execution_providers, args.model_path.clone())?;
+            let silero = silero_v5_ort::Silero::new(
+                vad_params.clone(),
+                execution_providers,
+                args.model_path.clone(),
+            )?;
             info!("Loaded the model in: {:?}", start.elapsed());
 
             // Do inference

@@ -1,6 +1,9 @@
 fmt:
     cargo fmt
 
+clippy:
+    cargo clippy --all-targets
+
 release: fmt
     cargo build --release
 
