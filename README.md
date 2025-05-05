@@ -10,6 +10,12 @@ Extract speech from audio files by a Voice Activity Detection model
 [![build macos](https://github.com/crs-org/extract-speech/actions/workflows/build-macos.yml/badge.svg)](https://github.com/crs-org/extract-speech/actions/workflows/build-macos.yml)
 [![build windows](https://github.com/crs-org/extract-speech/actions/workflows/build-win.yml/badge.svg)](https://github.com/crs-org/extract-speech/actions/workflows/build-win.yml)
 
+## Required packages
+
+```shell
+apt-get install protobuf-compiler
+```
+
 ## Download libonnxruntime
 
 ```shell
