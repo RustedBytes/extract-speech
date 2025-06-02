@@ -13,7 +13,7 @@ candle-core = { version = "0.9.1" }
 # candle-core = { version = "0.9.1", features = ["accelerate"] }
 candle-onnx = { version = "0.9.1" }
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }
-ort = { version = "2.0.0-rc.9", features = ["load-dynamic", "ndarray", "cuda", "tensorrt"] }
+ort = { version = "2.0.0-rc.10", features = ["load-dynamic", "ndarray", "cuda", "tensorrt"] }
 # ort = { version = "2.0.0-rc.9", features = ["download-binaries", "ndarray", "xnnpack"] }
 ndarray = "0.16"
 byteorder = "1.5.0"
