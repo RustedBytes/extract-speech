@@ -2,11 +2,11 @@ use std::path::PathBuf;
 
 use log::debug;
 use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
+use ort::value::Value;
 use ort::{
     execution_providers::ExecutionProviderDispatch,
     session::{builder::GraphOptimizationLevel, Session, SessionInputs},
 };
-use ort::value::Value;
 
 use crate::utils;
 
@@ -106,7 +106,10 @@ impl Silero {
         let inputs = SessionInputs::ValueSlice::<3>(&values);
         let outputs = self.session.run(inputs)?;
 
-        self.state = outputs["stateN"].try_extract_array::<f32>().unwrap().to_owned();
+        self.state = outputs["stateN"]
+            .try_extract_array::<f32>()
+            .unwrap()
+            .to_owned();
         self.context = next_context.into_dyn();
 
         let prediction = *outputs["output"]
