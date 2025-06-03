@@ -6,6 +6,7 @@ use ort::{
     execution_providers::ExecutionProviderDispatch,
     session::{builder::GraphOptimizationLevel, Session, SessionInputs},
 };
+use ort::value::Value;
 
 use crate::utils;
 
@@ -79,10 +80,10 @@ impl Silero {
         .into_dyn();
 
         let values = ort::inputs![
-            input_data,
-            std::mem::take(&mut self.state),
-            self.sample_rate.clone(),
-        ]?;
+            Value::from_array(input_data)?,
+            Value::from_array(std::mem::take(&mut self.state))?,
+            Value::from_array(self.sample_rate.clone())?,
+        ];
 
         if self.vad_params.debug {
             debug!(
@@ -105,11 +106,11 @@ impl Silero {
         let inputs = SessionInputs::ValueSlice::<3>(&values);
         let outputs = self.session.run(inputs)?;
 
-        self.state = outputs["stateN"].try_extract_tensor().unwrap().to_owned();
+        self.state = outputs["stateN"].try_extract_array::<f32>().unwrap().to_owned();
         self.context = next_context.into_dyn();
 
         let prediction = *outputs["output"]
-            .try_extract_raw_tensor::<f32>()
+            .try_extract_tensor::<f32>()
             .unwrap()
             .1
             .first()

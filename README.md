@@ -16,7 +16,17 @@ Extract speech from audio files by a Voice Activity Detection model
 apt-get install protobuf-compiler
 ```
 
-## Download libonnxruntime
+## Download onnxruntime
+
+### Linux
+
+```shell
+wget "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-gpu-1.22.0.tgz"
+ouch decompress onnxruntime-linux-x64-gpu-1.22.0.tgz
+rm onnxruntime-linux-x64-gpu-1.22.0.tgz
+```
+
+### MacOS
 
 ```shell
 wget "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-osx-arm64-1.20.0.tgz"
@@ -26,8 +36,25 @@ rm onnxruntime-osx-arm64-1.20.0.tgz
 
 ## Usage
 
-```shell
-cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz.wav --output test --output-format wav
+### Linux
 
-cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz_stereo.wav --output test --output-format wav
+#### ONNX Runtime
+```shell
+RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-linux-x64-gpu-1.22.0/lib/libonnxruntime.so.1.22.0 --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz.wav --output test --output-format wav --debug
+
+RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-linux-x64-gpu-1.22.0/lib/libonnxruntime.so.1.22.0 --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz_stereo.wav --output test --output-format wav --debug
+```
+
+#### Candle
+
+```shell
+RUST_LOG=debug cargo run -- --runtime candle --model-path ./models/xenova_silero_vad_v5.onnx --process-audio test-audios/test_16khz.wav --output test --output-format wav --debug
+```
+
+### MacOS
+
+```shell
+RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz.wav --output test --output-format wav --debug
+
+RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz_stereo.wav --output test --output-format wav --debug
 ```

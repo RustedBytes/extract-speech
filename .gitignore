@@ -1,6 +1,7 @@
 serviceaccount.json
 
 onnxruntime-osx-arm64-1.20.0
+onnxruntime-linux-x64-gpu-1.22.0
 
 cache.db
 session.dat
