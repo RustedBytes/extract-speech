@@ -16,6 +16,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install mold
+        uses: rui314/setup-mold@v1
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
