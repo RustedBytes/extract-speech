@@ -32,7 +32,8 @@ jobs:
       - name: Build
         run: cargo build
         env:
-          RUSTFLAGS: "-C link-arg=--ld-path=/usr/local/bin/wild"
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+          RUSTFLAGS: -Clink-arg=--ld-path=/usr/local/bin/wild
 
       - name: Check binary
         run: readelf  -p .comment target/debug/extract-speech
