@@ -7,7 +7,9 @@ jobs:
   build:
     name: build linux
 
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+
+    runs-on: depot-ubuntu-24.04-16
     
     steps:
       - name: Checkout code
