@@ -16,12 +16,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get number of CPU cores
-        uses: SimenB/github-actions-cpu-cores@v2
-        id: cpu-cores
-
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -47,7 +43,7 @@ jobs:
         run: cargo build --release
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
-          RUSTFLAGS: -Zthreads=${{ steps.cpu-cores.outputs.count }} -Clink-arg=-fuse-ld=lld -Ctarget-cpu=native
+          RUSTFLAGS: -Clink-arg=-fuse-ld=lld -Ctarget-cpu=native
 
       - name: Check binary
         run: readelf  -p .comment target/release/extract-speech
