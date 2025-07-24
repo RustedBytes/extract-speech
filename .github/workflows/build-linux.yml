@@ -13,8 +13,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Install mold
-        uses: rui314/setup-mold@v1
+      - name: Install wild
+        run: |
+          wget "https://github.com/davidlattimore/wild/releases/download/0.5.0/wild-linker-x86_64-unknown-linux-gnu.tar.xz"
+          tar xf wild-linker-x86_64-unknown-linux-gnu.tar.xz
+          mv wild-linker-x86_64-unknown-linux-gnu/wild /usr/local/bin/wild
+          chmod +x /usr/local/bin/wild
+          /usr/local/bin/wild --version
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
