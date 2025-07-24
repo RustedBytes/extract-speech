@@ -12,7 +12,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Get number of CPU cores
+        uses: SimenB/github-actions-cpu-cores@v2
+        id: cpu-cores
+
+      - name: Check number of CPU cores
+        run: |
+          echo Cores - ${{ steps.cpu-cores.outputs.count }}
+
       - name: Install wild
         run: |
           wget "https://github.com/davidlattimore/wild/releases/download/0.5.0/wild-linker-x86_64-unknown-linux-gnu.tar.xz"
@@ -22,7 +30,7 @@ jobs:
           /usr/local/bin/wild --version
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -33,7 +41,7 @@ jobs:
         run: cargo build
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
-          RUSTFLAGS: -Clink-arg=--ld-path=/usr/local/bin/wild
+          RUSTFLAGS: -Zthreads=${{ steps.cpu-cores.outputs.count }} -Clink-arg=--ld-path=/usr/local/bin/wild
 
       - name: Check binary
         run: readelf  -p .comment target/debug/extract-speech
