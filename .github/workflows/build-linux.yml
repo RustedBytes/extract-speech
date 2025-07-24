@@ -31,4 +31,6 @@ jobs:
 
       - name: Build
         run: cargo build
+        env:
+          RUSTFLAGS: "-C link-arg=--ld-path=/usr/local/bin/wild"
   
