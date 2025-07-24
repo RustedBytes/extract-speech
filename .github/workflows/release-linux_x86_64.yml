@@ -46,7 +46,7 @@ jobs:
           RUSTFLAGS: -Clink-arg=-fuse-ld=lld -Ctarget-cpu=native
 
       - name: Check binary
-        run: readelf  -p .comment target/release/extract-speech
+        run: readelf -p .comment target/release/extract-speech
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
