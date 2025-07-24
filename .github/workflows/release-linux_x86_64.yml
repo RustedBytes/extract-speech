@@ -36,9 +36,6 @@ jobs:
       - name: Install LLD
         run: sudo apt install -y lld
 
-      - name: Use LLD
-        run: lld --version
-
       - name: Build
         run: cargo build --release
         env:
