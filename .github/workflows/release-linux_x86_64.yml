@@ -41,6 +41,8 @@ jobs:
 
       - name: Build
         run: cargo build --release
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C target-cpu=native"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
