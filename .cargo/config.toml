@@ -3,7 +3,3 @@ rustflags = ["-Clink-arg=-fapple-link-rtlib"]
  
 [target.x86_64-apple-darwin]
 rustflags = ["-Clink-arg=-fapple-link-rtlib"]
-
-[target.'cfg(target_os = "linux")']
-linker = "clang"
-rustflags = ["-C", "link-arg=--ld-path=/usr/local/bin/wild"]
