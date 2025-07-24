@@ -44,4 +44,4 @@ jobs:
           RUSTFLAGS: -Zthreads=${{ steps.cpu-cores.outputs.count }} -Clink-arg=--ld-path=/usr/local/bin/wild
 
       - name: Check binary
-        run: readelf  -p .comment target/debug/extract-speech
+        run: readelf -p .comment target/debug/extract-speech
