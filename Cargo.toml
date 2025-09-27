@@ -26,7 +26,7 @@ anyhow = "*"
 chrono = "*"
 rayon = "*"
 log = "0.4.28"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
 
 [profile.dev]
 debug = false
