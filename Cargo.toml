@@ -25,7 +25,7 @@ multiversion = "0.8.0"
 anyhow = "*"
 chrono = "*"
 rayon = "*"
-log = "0.4.27"
+log = "0.4.28"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 
 [profile.dev]
