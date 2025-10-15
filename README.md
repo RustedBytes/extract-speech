@@ -58,3 +58,16 @@ RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-a
 
 RUST_LOG=debug cargo run -- --runtime onnxruntime --dylib-path onnxruntime-osx-arm64-1.20.0/lib/libonnxruntime.1.20.0.dylib --model-path ./models/silero_vad_v5.onnx --process-audio test-audios/test_16khz_stereo.wav --output test --output-format wav --debug
 ```
+
+## Cite
+
+```
+@software{Smoliakov_Extract_Speech_2025,
+  author = {Smoliakov, Yehor},
+  month = oct,
+  title = {{extract-speech: Extract speech from audio files by a Voice Activity Detection models}},
+  url = {https://github.com/RustedBytes/extract-speech},
+  version = {0.5.0},
+  year = {2025}
+}
+```
