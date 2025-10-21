@@ -7,7 +7,7 @@ edition = "2021"
 audiopus_sys = { git = "https://github.com/crs-org/audiopus-sys-updated.git", branch = "dev" }
 
 [dependencies]
-clap = { version = "4.5.49", features = ["derive"] }
+clap = { version = "4.5.50", features = ["derive"] }
 symphonia = { version = "0.5.5", features = ["all-formats", "all-codecs", "opt-simd"] }
 candle-core = { version = "0.9.1" }
 # candle-core = { version = "0.9.1", features = ["accelerate"] }
