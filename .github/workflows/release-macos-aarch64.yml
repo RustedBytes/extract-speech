@@ -37,7 +37,7 @@ jobs:
         run: cargo build --target aarch64-apple-darwin --release
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: extract-speech_aarch64_apple_darwin
           path: target/aarch64-apple-darwin/release/extract-speech
