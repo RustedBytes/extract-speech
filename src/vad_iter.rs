@@ -243,3 +243,159 @@ impl State {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_params_from_vad_params_default() {
+        let vad_params = utils::VadParams::default();
+        let params = Params::from(vad_params.clone());
+
+        assert_eq!(params.frame_size, 32);
+        assert_eq!(params.threshold, 0.5);
+        assert_eq!(params.min_silence_duration_ms, 100);
+        assert_eq!(params.speech_pad_ms, 30);
+        assert_eq!(params.min_speech_duration_ms, 250);
+        assert_eq!(params.sample_rate, 16_000);
+        assert!(!params.debug);
+
+        // Check calculated values
+        assert_eq!(params.sr_per_ms, 16); // 16000 / 1000
+        assert_eq!(params.frame_size_samples, 512); // 32 * 16
+        assert_eq!(params.min_speech_samples, 4000); // 16 * 250
+        assert_eq!(params.speech_pad_samples, 480); // 16 * 30
+        assert_eq!(params.min_silence_samples, 1600); // 16 * 100
+        assert_eq!(params.min_silence_samples_at_max_speech, 1568); // 16 * 98
+    }
+
+    #[test]
+    fn test_params_from_vad_params_custom() {
+        let vad_params = utils::VadParams {
+            frame_size: 64,
+            threshold: 0.7,
+            min_silence_duration_ms: 200,
+            speech_pad_ms: 50,
+            min_speech_duration_ms: 300,
+            max_speech_duration_s: 30.0,
+            sample_rate: 8_000,
+            debug: true,
+        };
+
+        let params = Params::from(vad_params);
+
+        assert_eq!(params.frame_size, 64);
+        assert_eq!(params.threshold, 0.7);
+        assert_eq!(params.sample_rate, 8_000);
+        assert!(params.debug);
+
+        // Check calculated values for 8kHz
+        assert_eq!(params.sr_per_ms, 8); // 8000 / 1000
+        assert_eq!(params.frame_size_samples, 512); // 64 * 8
+        assert_eq!(params.min_speech_samples, 2400); // 8 * 300
+        assert_eq!(params.speech_pad_samples, 400); // 8 * 50
+        assert_eq!(params.min_silence_samples, 1600); // 8 * 200
+    }
+
+    #[test]
+    fn test_params_max_speech_samples_calculation() {
+        let vad_params = utils::VadParams {
+            frame_size: 32,
+            threshold: 0.5,
+            min_silence_duration_ms: 100,
+            speech_pad_ms: 30,
+            min_speech_duration_ms: 250,
+            max_speech_duration_s: 10.0,
+            sample_rate: 16_000,
+            debug: false,
+        };
+
+        let params = Params::from(vad_params);
+
+        // max_speech_samples = sample_rate * max_speech_duration_s - frame_size_samples - 2 * speech_pad_samples
+        // = 16000 * 10.0 - 512 - 2 * 480
+        // = 160000 - 512 - 960
+        // = 158528
+        let expected = 16_000.0 * 10.0 - 512.0 - 2.0 * 480.0;
+        assert_eq!(params.max_speech_samples, expected);
+    }
+
+    #[test]
+    fn test_params_infinite_max_speech_duration() {
+        let vad_params = utils::VadParams {
+            frame_size: 32,
+            threshold: 0.5,
+            min_silence_duration_ms: 100,
+            speech_pad_ms: 30,
+            min_speech_duration_ms: 250,
+            max_speech_duration_s: f32::INFINITY,
+            sample_rate: 16_000,
+            debug: false,
+        };
+
+        let params = Params::from(vad_params);
+
+        // When max_speech_duration_s is infinite, max_speech_samples should also be infinite
+        assert!(params.max_speech_samples.is_infinite());
+    }
+
+    #[test]
+    fn test_state_new() {
+        let state = State::new();
+
+        assert_eq!(state.current_sample, 0);
+        assert_eq!(state.temp_end, 0);
+        assert_eq!(state.next_start, 0);
+        assert_eq!(state.prev_end, 0);
+        assert!(!state.triggered);
+        assert_eq!(state.current_speech.start, 0);
+        assert_eq!(state.current_speech.end, 0);
+        assert_eq!(state.speeches.len(), 0);
+    }
+
+    #[test]
+    fn test_state_default() {
+        let state = State::default();
+
+        assert_eq!(state.current_sample, 0);
+        assert_eq!(state.temp_end, 0);
+        assert_eq!(state.next_start, 0);
+        assert_eq!(state.prev_end, 0);
+        assert!(!state.triggered);
+        assert_eq!(state.speeches.len(), 0);
+    }
+
+    #[test]
+    fn test_params_different_sample_rates() {
+        // Test with 8kHz
+        let vad_params_8k = utils::VadParams {
+            frame_size: 32,
+            sample_rate: 8_000,
+            ..Default::default()
+        };
+        let params_8k = Params::from(vad_params_8k);
+        assert_eq!(params_8k.sr_per_ms, 8);
+        assert_eq!(params_8k.frame_size_samples, 256); // 32 * 8
+
+        // Test with 16kHz
+        let vad_params_16k = utils::VadParams {
+            frame_size: 32,
+            sample_rate: 16_000,
+            ..Default::default()
+        };
+        let params_16k = Params::from(vad_params_16k);
+        assert_eq!(params_16k.sr_per_ms, 16);
+        assert_eq!(params_16k.frame_size_samples, 512); // 32 * 16
+
+        // Test with 48kHz
+        let vad_params_48k = utils::VadParams {
+            frame_size: 32,
+            sample_rate: 48_000,
+            ..Default::default()
+        };
+        let params_48k = Params::from(vad_params_48k);
+        assert_eq!(params_48k.sr_per_ms, 48);
+        assert_eq!(params_48k.frame_size_samples, 1536); // 32 * 48
+    }
+}
