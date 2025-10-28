@@ -25,6 +25,9 @@ jobs:
     name: Test Rust Codebase
     runs-on: self-hosted
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
