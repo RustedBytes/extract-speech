@@ -527,6 +527,8 @@ dependencies = [
  "opus",
  "ort",
  "rayon",
+ "serde",
+ "serde_json",
  "symphonia",
  "tracing-subscriber",
 ]

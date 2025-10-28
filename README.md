@@ -184,6 +184,18 @@ extract-speech \
   --output-format wav
 ```
 
+**Generating metadata JSON:**
+
+```bash
+extract-speech \
+  --runtime candle \
+  --model-path ./models/xenova_silero_vad_v5.onnx \
+  --process-audio test-audios/test_16khz.wav \
+  --output ./output \
+  --metadata ./output-metadata.json \
+  --output-format wav
+```
+
 ### CLI Options
 
 | Option | Description | Default | Required |
@@ -194,6 +206,7 @@ extract-speech \
 | `--process-audio` | Input audio file to process | - | Yes |
 | `--source-audio` | Optional source audio for final extraction (if different from process-audio) | - | No |
 | `--output` | Output directory or file path | - | Yes |
+| `--metadata` | Path to write metadata JSON file with intervals and timing information | - | No |
 | `--output-type` | Output type: `files` or `concatenated` | `files` | No |
 | `--output-format` | Output format: `wav`, `opus`, or `ogg` | `wav` | No |
 | `--threshold` | VAD detection threshold (0.0-1.0) | `0.7` | No |
@@ -226,6 +239,47 @@ extract-speech \
 - **concatenated**: Creates a single file with all speech segments joined
   - Filename: specified by `--output` parameter
   - Use when you want continuous speech without gaps
+
+### Metadata Output
+
+The `--metadata` flag allows you to generate a JSON file containing detailed information about the extracted speech segments. This is useful for programmatic processing and integration with other tools.
+
+**Example:**
+
+```bash
+extract-speech \
+  --runtime candle \
+  --model-path ./models/xenova_silero_vad_v5.onnx \
+  --process-audio input.wav \
+  --output ./output \
+  --metadata metadata.json
+```
+
+**JSON Structure:**
+
+```json
+{
+  "intervals": [
+    {
+      "filename": "1730135784123_0.wav",
+      "duration": "2.500000"
+    },
+    {
+      "filename": "1730135784124_1.wav",
+      "duration": "3.250000"
+    }
+  ],
+  "total_seconds": "5.750000",
+  "compute_seconds": "0.123456"
+}
+```
+
+**Fields:**
+- `intervals`: Array of speech segments
+  - `filename`: Name of the output file for this segment
+  - `duration`: Duration of the segment in seconds (formatted with 6 decimal places)
+- `total_seconds`: Total duration of all speech segments combined
+- `compute_seconds`: Time taken for VAD inference
 
 ## Advanced Usage
 
