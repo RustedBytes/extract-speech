@@ -9,19 +9,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "23.x"
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: stable
+
       - name: Build release
         run: cargo build --release
+
       - name: Upload release binary as artifact
         uses: actions/upload-artifact@v5
         with:
           name: extract-speech
           path: target/release/extract-speech
+
       - name: Create GitHub Release & Upload Asset
         uses: softprops/action-gh-release@v2
         with:
