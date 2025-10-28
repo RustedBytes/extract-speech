@@ -62,11 +62,14 @@ impl PyAnnote {
         let outputs = self.session.run(inputs)?;
 
         let logits = &outputs["logits"];
-        let probabilities: ArrayD<f32> = logits.try_extract_tensor()?.to_owned();
+        let (shape, data) = logits.try_extract_tensor()?.to_owned();
 
         if self.vad_params.debug {
-            debug!("PyAnnote output shape: {:?}", probabilities.shape());
+            debug!("PyAnnote output shape: {:?}", shape);
         }
+
+        let shape_usize: Vec<usize> = shape.iter().map(|&x| x as usize).collect();
+        let probabilities = Array::from_shape_vec(shape_usize, data.to_vec())?;
 
         Ok(probabilities)
     }
