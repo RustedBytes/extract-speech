@@ -273,7 +273,12 @@ fn main() -> Result<()> {
                     info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
+                    write_results(
+                        args,
+                        speeches_result,
+                        source_samples,
+                        compute_time.as_secs_f64(),
+                    )
                 }
                 VadModel::Pyannote => {
                     return Err(anyhow::anyhow!(
@@ -310,7 +315,12 @@ fn main() -> Result<()> {
                     info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
+                    write_results(
+                        args,
+                        speeches_result,
+                        source_samples,
+                        compute_time.as_secs_f64(),
+                    )
                 }
                 VadModel::Pyannote => {
                     // Create the VAD model
@@ -332,14 +342,24 @@ fn main() -> Result<()> {
                     info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
+                    write_results(
+                        args,
+                        speeches_result,
+                        source_samples,
+                        compute_time.as_secs_f64(),
+                    )
                 }
             }
         }
     }
 }
 
-fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>, compute_seconds: f64) -> Result<()> {
+fn write_results(
+    args: Args,
+    speeches: &[utils::TimeStamp],
+    samples: Vec<f32>,
+    compute_seconds: f64,
+) -> Result<()> {
     info!("Speeches: {}", speeches.len());
 
     let output_path = args.output.unwrap();
@@ -454,8 +474,12 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>, c
                         .cloned()
                         .collect::<Vec<f32>>();
 
-                    write_opus(output_path.clone(), gathered_speeches.clone(), args.sample_rate)
-                        .map_err(|e| anyhow::anyhow!(e))?;
+                    write_opus(
+                        output_path.clone(),
+                        gathered_speeches.clone(),
+                        args.sample_rate,
+                    )
+                    .map_err(|e| anyhow::anyhow!(e))?;
 
                     // For concatenated, we have a single output file
                     let duration_seconds = gathered_speeches.len() as f64 / sample_rate;
