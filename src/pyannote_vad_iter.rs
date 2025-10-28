@@ -151,8 +151,7 @@ impl PyAnnoteVadIter {
 
 // Softmax implementation for a 1D ArrayView
 fn softmax(x: ArrayView1<'_, f32>) -> Vec<f32> {
-    let array: Vec<f32> = x.iter().map(|&v| v).collect();
-    let mut softmax_array = array;
+    let mut softmax_array = x.to_vec();
 
     for value in &mut softmax_array {
         *value = std::f32::consts::E.powf(*value);
