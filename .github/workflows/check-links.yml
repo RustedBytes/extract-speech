@@ -15,6 +15,9 @@ on:
     paths:
       - '**/*.md'
       - '.github/workflows/check-links.yml'
+  schedule:
+    # Run weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 jobs:
