@@ -131,3 +131,163 @@ pub fn write_opus(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_write_opus_header() {
+        let mut buffer = Vec::new();
+        let result = write_opus_header(&mut buffer, 1, 16000);
+
+        assert!(result.is_ok());
+        assert_eq!(&buffer[0..8], b"OpusHead");
+        assert_eq!(buffer[8], 1); // version
+        assert_eq!(buffer[9], 1); // channel count
+    }
+
+    #[test]
+    fn test_write_opus_header_stereo() {
+        let mut buffer = Vec::new();
+        let result = write_opus_header(&mut buffer, 2, 48000);
+
+        assert!(result.is_ok());
+        assert_eq!(&buffer[0..8], b"OpusHead");
+        assert_eq!(buffer[8], 1); // version
+        assert_eq!(buffer[9], 2); // stereo channel count
+    }
+
+    #[test]
+    fn test_write_opus_tags() {
+        let mut buffer = Vec::new();
+        let result = write_opus_tags(&mut buffer);
+
+        assert!(result.is_ok());
+        assert_eq!(&buffer[0..8], b"OpusTags");
+        // Check vendor string length is correct (4 bytes for "rust")
+        assert_eq!(buffer[8], 4);
+        assert_eq!(buffer[9], 0);
+        assert_eq!(buffer[10], 0);
+        assert_eq!(buffer[11], 0);
+        // Check vendor string
+        assert_eq!(&buffer[12..16], b"rust");
+    }
+
+    #[test]
+    fn test_opus_constants() {
+        // Verify that the constants are set to expected values
+        assert_eq!(OPUS_ENCODER_FRAME_SIZE, 960);
+        assert_eq!(OPUS_SAMPLE_RATE, 48000);
+    }
+
+    #[test]
+    fn test_write_ogg_mono_with_silence() {
+        // Test writing a small amount of silence
+        let sample_rate = 48000;
+        let duration_frames = 10;
+        let pcm: Vec<f32> = vec![0.0; OPUS_ENCODER_FRAME_SIZE * duration_frames];
+
+        let mut buffer = Vec::new();
+        let result = write_ogg_mono(&mut buffer, &pcm, sample_rate);
+
+        assert!(result.is_ok());
+        assert!(!buffer.is_empty(), "Output buffer should contain data");
+    }
+
+    #[test]
+    fn test_write_ogg_mono_with_tone() {
+        // Test writing a simple sine wave
+        let sample_rate = 48000;
+        let duration_frames = 5;
+        let frequency = 440.0;
+
+        let pcm: Vec<f32> = (0..OPUS_ENCODER_FRAME_SIZE * duration_frames)
+            .map(|i| {
+                let t = i as f32 / sample_rate as f32;
+                (2.0 * std::f32::consts::PI * frequency * t).sin() * 0.5
+            })
+            .collect();
+
+        let mut buffer = Vec::new();
+        let result = write_ogg_mono(&mut buffer, &pcm, sample_rate);
+
+        assert!(result.is_ok());
+        assert!(!buffer.is_empty(), "Output buffer should contain data");
+    }
+
+    #[test]
+    fn test_write_ogg_mono_requires_resampling() {
+        // Test with a sample rate that requires resampling
+        let sample_rate = 16000;
+        let duration_frames = 5;
+
+        // Note: At 16kHz, we need proportionally fewer samples
+        let num_samples = (sample_rate as f32 / OPUS_SAMPLE_RATE as f32
+            * OPUS_ENCODER_FRAME_SIZE as f32) as usize
+            * duration_frames;
+        let pcm: Vec<f32> = vec![0.5; num_samples];
+
+        let mut buffer = Vec::new();
+        let result = write_ogg_mono(&mut buffer, &pcm, sample_rate);
+
+        assert!(result.is_ok());
+        assert!(
+            !buffer.is_empty(),
+            "Output buffer should contain data after resampling"
+        );
+    }
+
+    #[test]
+    fn test_opus_header_structure() {
+        let mut buffer = Vec::new();
+        write_opus_header(&mut buffer, 1, 16000).unwrap();
+
+        // Verify the structure matches the Opus specification
+        assert_eq!(buffer.len(), 19); // OpusHead packet should be 19 bytes
+
+        // Magic signature
+        assert_eq!(&buffer[0..8], b"OpusHead");
+
+        // Version (1 byte)
+        assert_eq!(buffer[8], 1);
+
+        // Channel count (1 byte)
+        assert_eq!(buffer[9], 1);
+
+        // Pre-skip (2 bytes, little-endian)
+        let pre_skip = u16::from_le_bytes([buffer[10], buffer[11]]);
+        assert_eq!(pre_skip, 3840);
+
+        // Sample rate (4 bytes, little-endian)
+        let sample_rate = u32::from_le_bytes([buffer[12], buffer[13], buffer[14], buffer[15]]);
+        assert_eq!(sample_rate, 16000);
+
+        // Output gain (2 bytes, little-endian)
+        let output_gain = i16::from_le_bytes([buffer[16], buffer[17]]);
+        assert_eq!(output_gain, 0);
+
+        // Channel mapping family (1 byte)
+        assert_eq!(buffer[18], 0);
+    }
+
+    #[test]
+    fn test_opus_tags_structure() {
+        let mut buffer = Vec::new();
+        write_opus_tags(&mut buffer).unwrap();
+
+        // Magic signature
+        assert_eq!(&buffer[0..8], b"OpusTags");
+
+        // Vendor string length (4 bytes, little-endian)
+        let vendor_length = u32::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11]]);
+        assert_eq!(vendor_length, 4);
+
+        // Vendor string
+        assert_eq!(&buffer[12..16], b"rust");
+
+        // Number of user comments (4 bytes, little-endian)
+        let num_comments = u32::from_le_bytes([buffer[16], buffer[17], buffer[18], buffer[19]]);
+        assert_eq!(num_comments, 0);
+    }
+}
