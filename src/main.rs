@@ -15,6 +15,8 @@ use rayon::prelude::*;
 
 mod audio;
 mod opus;
+mod pyannote_vad_iter;
+mod pyannote_vad_ort;
 mod resampler;
 mod silero_v5;
 mod silero_v5_ort;
@@ -46,6 +48,12 @@ enum Runtime {
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
+enum VadModel {
+    Silero,
+    Pyannote,
+}
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputType {
     Files,
     Concatenated,
@@ -66,6 +74,11 @@ struct Args {
     #[arg(long)]
     #[clap(value_enum, default_value_t = Runtime::Candle)]
     runtime: Runtime,
+
+    /// VAD model type
+    #[arg(long)]
+    #[clap(value_enum, default_value_t = VadModel::Silero)]
+    vad_model: VadModel,
 
     /// Path to the ONNX runtime dynamic library
     #[arg(long)]
@@ -224,20 +237,32 @@ fn main() -> Result<()> {
             // Set the device
             let device = candle_core::Device::Cpu;
 
-            // Create the VAD model
-            let start: std::time::Instant = std::time::Instant::now();
-            let silero =
-                silero_v5::Silero::new(vad_params.clone(), args.model_path.clone(), device)?;
-            info!("Loaded the model in: {:?}", start.elapsed());
+            match args.vad_model {
+                VadModel::Silero => {
+                    // Create the VAD model
+                    let start: std::time::Instant = std::time::Instant::now();
+                    let silero = silero_v5::Silero::new(
+                        vad_params.clone(),
+                        args.model_path.clone(),
+                        device,
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
 
-            // Do inference
-            let start = std::time::Instant::now();
-            let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
-            let speeches_result = vad_iterator.process(process_samples.to_vec())?;
-            info!("Inference time: {:?}", start.elapsed());
+                    // Do inference
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
+                    let speeches_result = vad_iterator.process(process_samples.to_vec())?;
+                    info!("Inference time: {:?}", start.elapsed());
 
-            // Write the output
-            write_results(args, speeches_result, source_samples)
+                    // Write the output
+                    write_results(args, speeches_result, source_samples)
+                }
+                VadModel::Pyannote => {
+                    return Err(anyhow::anyhow!(
+                        "PyAnnote model is only supported with ONNX Runtime. Use --runtime onnxruntime"
+                    ));
+                }
+            }
         }
         Runtime::Onnxruntime => {
             let dylib_path = args.dylib_path.clone().unwrap();
@@ -248,23 +273,48 @@ fn main() -> Result<()> {
             )
             .commit()?;
 
-            // Create the VAD model
-            let start: std::time::Instant = std::time::Instant::now();
-            let silero = silero_v5_ort::Silero::new(
-                vad_params.clone(),
-                execution_providers,
-                args.model_path.clone(),
-            )?;
-            info!("Loaded the model in: {:?}", start.elapsed());
+            match args.vad_model {
+                VadModel::Silero => {
+                    // Create the VAD model
+                    let start: std::time::Instant = std::time::Instant::now();
+                    let silero = silero_v5_ort::Silero::new(
+                        vad_params.clone(),
+                        execution_providers,
+                        args.model_path.clone(),
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
 
-            // Do inference
-            let start = std::time::Instant::now();
-            let mut vad_iterator_ort = vad_iter_ort::VadIter::new(silero, vad_params);
-            let speeches_result = vad_iterator_ort.process(process_samples.to_vec())?;
-            info!("Inference time: {:?}", start.elapsed());
+                    // Do inference
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator_ort = vad_iter_ort::VadIter::new(silero, vad_params);
+                    let speeches_result = vad_iterator_ort.process(process_samples.to_vec())?;
+                    info!("Inference time: {:?}", start.elapsed());
 
-            // Write the output
-            write_results(args, speeches_result, source_samples)
+                    // Write the output
+                    write_results(args, speeches_result, source_samples)
+                }
+                VadModel::Pyannote => {
+                    // Create the VAD model
+                    let start: std::time::Instant = std::time::Instant::now();
+                    let pyannote = pyannote_vad_ort::PyAnnote::new(
+                        vad_params.clone(),
+                        execution_providers,
+                        args.model_path.clone(),
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    // Do inference
+                    let start = std::time::Instant::now();
+                    let mut pyannote_vad_iterator =
+                        pyannote_vad_iter::PyAnnoteVadIter::new(pyannote, vad_params);
+                    let speeches_result =
+                        pyannote_vad_iterator.process(process_samples.to_vec())?;
+                    info!("Inference time: {:?}", start.elapsed());
+
+                    // Write the output
+                    write_results(args, speeches_result, source_samples)
+                }
+            }
         }
     }
 }
