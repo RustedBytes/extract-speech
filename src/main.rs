@@ -415,13 +415,16 @@ fn write_results(
                                 let duration_seconds = segment_samples.len() as f64 / sample_rate;
 
                                 // Collect metadata in thread-safe manner
-                                intervals_mutex.lock().unwrap().push((
-                                    idx,
-                                    IntervalMetadata {
-                                        filename,
-                                        duration: format!("{:.6}", duration_seconds),
-                                    },
-                                ));
+                                intervals_mutex
+                                    .lock()
+                                    .map_err(|e| anyhow::anyhow!("Mutex poisoned: {:?}", e))?
+                                    .push((
+                                        idx,
+                                        IntervalMetadata {
+                                            filename,
+                                            duration: format!("{:.6}", duration_seconds),
+                                        },
+                                    ));
 
                                 Ok(())
                             });
@@ -429,7 +432,9 @@ fn write_results(
                     result?;
 
                     // Sort intervals by index to maintain order
-                    let mut intervals_with_idx = intervals_mutex.into_inner().unwrap();
+                    let mut intervals_with_idx = intervals_mutex
+                        .into_inner()
+                        .map_err(|e| anyhow::anyhow!("Mutex poisoned: {:?}", e))?;
                     intervals_with_idx.sort_by_key(|(idx, _)| *idx);
                     intervals.extend(intervals_with_idx.into_iter().map(|(_, meta)| meta));
                 }
@@ -492,13 +497,16 @@ fn write_results(
                                 let duration_seconds = process_samples.len() as f64 / sample_rate;
 
                                 // Collect metadata in thread-safe manner
-                                intervals_mutex.lock().unwrap().push((
-                                    idx,
-                                    IntervalMetadata {
-                                        filename,
-                                        duration: format!("{:.6}", duration_seconds),
-                                    },
-                                ));
+                                intervals_mutex
+                                    .lock()
+                                    .map_err(|e| anyhow::anyhow!("Mutex poisoned: {:?}", e))?
+                                    .push((
+                                        idx,
+                                        IntervalMetadata {
+                                            filename,
+                                            duration: format!("{:.6}", duration_seconds),
+                                        },
+                                    ));
 
                                 Ok(())
                             });
@@ -506,7 +514,9 @@ fn write_results(
                     result?;
 
                     // Sort intervals by index to maintain order
-                    let mut intervals_with_idx = intervals_mutex.into_inner().unwrap();
+                    let mut intervals_with_idx = intervals_mutex
+                        .into_inner()
+                        .map_err(|e| anyhow::anyhow!("Mutex poisoned: {:?}", e))?;
                     intervals_with_idx.sort_by_key(|(idx, _)| *idx);
                     intervals.extend(intervals_with_idx.into_iter().map(|(_, meta)| meta));
                 }
