@@ -137,8 +137,6 @@ rm onnxruntime-osx-arm64-1.20.0.tgz
 
 ### Basic Examples
 
-### Basic Examples
-
 **Using Candle Runtime (simplest, no external dependencies):**
 
 ```bash
