@@ -2,6 +2,7 @@
 extern crate accelerate_src;
 
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use anyhow::Result;
 use chrono::prelude::*;
@@ -11,6 +12,7 @@ use ort::execution_providers::{
     CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider,
     ExecutionProviderDispatch, TensorRTExecutionProvider,
 };
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 mod audio;
@@ -386,29 +388,50 @@ fn write_results(
 
             match args.output_type {
                 OutputType::Files => {
-                    // Sequential processing to collect filenames in order
-                    for (idx, speech) in speeches.iter().enumerate() {
-                        let current_ts = Utc::now().timestamp_millis();
-                        let filename = format!("{}_{}.wav", current_ts, idx);
-                        let filepath = format!("{}/{}", directory, filename);
-                        let mut writer = hound::WavWriter::create(&filepath, spec)?;
+                    // Parallel processing to write files concurrently
+                    let intervals_mutex = Mutex::new(Vec::new());
+                    let base_ts = Utc::now().timestamp_millis();
 
-                        let segment_samples =
-                            samples[speech.start as usize..speech.end as usize].to_vec();
-                        for sample in &segment_samples {
-                            let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-                            writer.write_sample(x)?;
-                        }
+                    let result: Result<()> =
+                        speeches
+                            .par_iter()
+                            .enumerate()
+                            .try_for_each(|(idx, speech)| {
+                                let filename = format!("{}_{}.wav", base_ts, idx);
+                                let filepath = format!("{}/{}", directory, filename);
+                                let mut writer = hound::WavWriter::create(&filepath, spec)
+                                    .map_err(|e| anyhow::anyhow!(e))?;
 
-                        writer.finalize()?;
+                                let segment_samples =
+                                    samples[speech.start as usize..speech.end as usize].to_vec();
+                                for sample in &segment_samples {
+                                    let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+                                    writer.write_sample(x).map_err(|e| anyhow::anyhow!(e))?;
+                                }
 
-                        // Calculate duration in seconds
-                        let duration_seconds = segment_samples.len() as f64 / sample_rate;
-                        intervals.push(IntervalMetadata {
-                            filename,
-                            duration: format!("{:.6}", duration_seconds),
-                        });
-                    }
+                                writer.finalize().map_err(|e| anyhow::anyhow!(e))?;
+
+                                // Calculate duration in seconds
+                                let duration_seconds = segment_samples.len() as f64 / sample_rate;
+
+                                // Collect metadata in thread-safe manner
+                                intervals_mutex.lock().unwrap().push((
+                                    idx,
+                                    IntervalMetadata {
+                                        filename,
+                                        duration: format!("{:.6}", duration_seconds),
+                                    },
+                                ));
+
+                                Ok(())
+                            });
+
+                    result?;
+
+                    // Sort intervals by index to maintain order
+                    let mut intervals_with_idx = intervals_mutex.into_inner().unwrap();
+                    intervals_with_idx.sort_by_key(|(idx, _)| *idx);
+                    intervals.extend(intervals_with_idx.into_iter().map(|(_, meta)| meta));
                 }
                 OutputType::Concatenated => {
                     let gathered_speeches = speeches
@@ -447,23 +470,45 @@ fn write_results(
         OutputFormat::Opus | OutputFormat::Ogg => {
             match args.output_type {
                 OutputType::Files => {
-                    for (idx, speech) in speeches.iter().enumerate() {
-                        let current_ts = Utc::now().timestamp_millis();
-                        let filename = format!("{}_{}.ogg", current_ts, idx);
-                        let filepath = PathBuf::from(format!("{}/{}", directory, filename));
-                        let process_samples =
-                            samples[speech.start as usize..speech.end as usize].to_vec();
+                    // Parallel processing to write files concurrently
+                    let intervals_mutex = Mutex::new(Vec::new());
+                    let base_ts = Utc::now().timestamp_millis();
+                    let sample_rate_val = args.sample_rate;
 
-                        write_opus(filepath, process_samples.clone(), args.sample_rate)
-                            .map_err(|e| anyhow::anyhow!(e))?;
+                    let result: Result<()> =
+                        speeches
+                            .par_iter()
+                            .enumerate()
+                            .try_for_each(|(idx, speech)| {
+                                let filename = format!("{}_{}.ogg", base_ts, idx);
+                                let filepath = PathBuf::from(format!("{}/{}", directory, filename));
+                                let process_samples =
+                                    samples[speech.start as usize..speech.end as usize].to_vec();
 
-                        // Calculate duration in seconds
-                        let duration_seconds = process_samples.len() as f64 / sample_rate;
-                        intervals.push(IntervalMetadata {
-                            filename,
-                            duration: format!("{:.6}", duration_seconds),
-                        });
-                    }
+                                write_opus(filepath, process_samples.clone(), sample_rate_val)
+                                    .map_err(|e| anyhow::anyhow!(e))?;
+
+                                // Calculate duration in seconds
+                                let duration_seconds = process_samples.len() as f64 / sample_rate;
+
+                                // Collect metadata in thread-safe manner
+                                intervals_mutex.lock().unwrap().push((
+                                    idx,
+                                    IntervalMetadata {
+                                        filename,
+                                        duration: format!("{:.6}", duration_seconds),
+                                    },
+                                ));
+
+                                Ok(())
+                            });
+
+                    result?;
+
+                    // Sort intervals by index to maintain order
+                    let mut intervals_with_idx = intervals_mutex.into_inner().unwrap();
+                    intervals_with_idx.sort_by_key(|(idx, _)| *idx);
+                    intervals.extend(intervals_with_idx.into_iter().map(|(_, meta)| meta));
                 }
                 OutputType::Concatenated => {
                     let gathered_speeches = speeches
