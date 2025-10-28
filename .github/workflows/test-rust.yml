@@ -6,7 +6,7 @@ on:
       - main
       - dev
     paths:
-      - '**.rs'
+      - '**/*.rs'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/test-rust.yml'
@@ -15,7 +15,7 @@ on:
       - main
       - dev
     paths:
-      - '**.rs'
+      - '**/*.rs'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/test-rust.yml'
