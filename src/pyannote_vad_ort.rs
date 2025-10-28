@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use log::debug;
-use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
+use ndarray::{Array, ArrayD};
 use ort::value::Value;
 use ort::{
     execution_providers::ExecutionProviderDispatch,
