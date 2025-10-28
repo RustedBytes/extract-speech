@@ -11,7 +11,7 @@ use ort::execution_providers::{
     CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider,
     ExecutionProviderDispatch, TensorRTExecutionProvider,
 };
-use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 mod audio;
 mod opus;
@@ -59,6 +59,19 @@ enum OutputType {
     Concatenated,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct IntervalMetadata {
+    filename: String,
+    duration: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct VadMetadata {
+    intervals: Vec<IntervalMetadata>,
+    total_seconds: String,
+    compute_seconds: String,
+}
+
 #[derive(Parser, Debug)]
 #[command(version, long_about = None)]
 struct Args {
@@ -95,6 +108,10 @@ struct Args {
     /// The path of a final result file or directory
     #[arg(long)]
     output: Option<PathBuf>,
+
+    /// Path to write metadata JSON file
+    #[arg(long)]
+    metadata: Option<PathBuf>,
 
     /// The output type
     #[arg(long)]
@@ -252,10 +269,11 @@ fn main() -> Result<()> {
                     let start = std::time::Instant::now();
                     let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
                     let speeches_result = vad_iterator.process(process_samples.to_vec())?;
-                    info!("Inference time: {:?}", start.elapsed());
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples)
+                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
                 }
                 VadModel::Pyannote => {
                     return Err(anyhow::anyhow!(
@@ -288,10 +306,11 @@ fn main() -> Result<()> {
                     let start = std::time::Instant::now();
                     let mut vad_iterator_ort = vad_iter_ort::VadIter::new(silero, vad_params);
                     let speeches_result = vad_iterator_ort.process(process_samples.to_vec())?;
-                    info!("Inference time: {:?}", start.elapsed());
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples)
+                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
                 }
                 VadModel::Pyannote => {
                     // Create the VAD model
@@ -309,17 +328,18 @@ fn main() -> Result<()> {
                         pyannote_vad_iter::PyAnnoteVadIter::new(pyannote, vad_params);
                     let speeches_result =
                         pyannote_vad_iterator.process(process_samples.to_vec())?;
-                    info!("Inference time: {:?}", start.elapsed());
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
 
                     // Write the output
-                    write_results(args, speeches_result, source_samples)
+                    write_results(args, speeches_result, source_samples, compute_time.as_secs_f64())
                 }
             }
         }
     }
 }
 
-fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -> Result<()> {
+fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>, compute_seconds: f64) -> Result<()> {
     info!("Speeches: {}", speeches.len());
 
     let output_path = args.output.unwrap();
@@ -329,6 +349,10 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
         std::fs::create_dir_all(output_path.clone())?;
     }
     let directory = output_path.display();
+
+    // Collect metadata
+    let mut intervals: Vec<IntervalMetadata> = Vec::new();
+    let sample_rate = 16_000.0;
 
     // Write the output
     match args.output_format {
@@ -342,24 +366,29 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
 
             match args.output_type {
                 OutputType::Files => {
-                    speeches.par_iter().enumerate().try_for_each(
-                        |(idx, speech)| -> Result<()> {
-                            let current_ts = Utc::now().timestamp_millis();
-                            let filename = format!("{}/{}_{}.wav", directory, current_ts, idx);
-                            let mut writer = hound::WavWriter::create(filename, spec)?;
+                    // Sequential processing to collect filenames in order
+                    for (idx, speech) in speeches.iter().enumerate() {
+                        let current_ts = Utc::now().timestamp_millis();
+                        let filename = format!("{}_{}.wav", current_ts, idx);
+                        let filepath = format!("{}/{}", directory, filename);
+                        let mut writer = hound::WavWriter::create(&filepath, spec)?;
 
-                            let samples =
-                                samples[speech.start as usize..speech.end as usize].to_vec();
-                            for sample in samples {
-                                let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-                                writer.write_sample(x)?;
-                            }
+                        let segment_samples =
+                            samples[speech.start as usize..speech.end as usize].to_vec();
+                        for sample in &segment_samples {
+                            let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+                            writer.write_sample(x)?;
+                        }
 
-                            writer.finalize()?;
+                        writer.finalize()?;
 
-                            Ok(())
-                        },
-                    )?;
+                        // Calculate duration in seconds
+                        let duration_seconds = segment_samples.len() as f64 / sample_rate;
+                        intervals.push(IntervalMetadata {
+                            filename,
+                            duration: format!("{:.6}", duration_seconds),
+                        });
+                    }
                 }
                 OutputType::Concatenated => {
                     let gathered_speeches = speeches
@@ -370,14 +399,26 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                         .cloned()
                         .collect::<Vec<f32>>();
 
-                    let mut writer = hound::WavWriter::create(output_path, spec)?;
+                    let mut writer = hound::WavWriter::create(&output_path, spec)?;
 
-                    for sample in gathered_speeches {
+                    for sample in &gathered_speeches {
                         let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
                         writer.write_sample(x)?;
                     }
 
                     writer.finalize()?;
+
+                    // For concatenated, we have a single output file
+                    let duration_seconds = gathered_speeches.len() as f64 / sample_rate;
+                    let filename = output_path
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or("output.wav")
+                        .to_string();
+                    intervals.push(IntervalMetadata {
+                        filename,
+                        duration: format!("{:.6}", duration_seconds),
+                    });
                 }
             }
 
@@ -386,20 +427,23 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
         OutputFormat::Opus | OutputFormat::Ogg => {
             match args.output_type {
                 OutputType::Files => {
-                    speeches.par_iter().enumerate().try_for_each(
-                        |(idx, speech)| -> Result<()> {
-                            let current_ts = Utc::now().timestamp_millis();
-                            let filename =
-                                PathBuf::from(format!("{}/{}_{}.ogg", directory, current_ts, idx));
-                            let process_samples =
-                                samples[speech.start as usize..speech.end as usize].to_vec();
+                    for (idx, speech) in speeches.iter().enumerate() {
+                        let current_ts = Utc::now().timestamp_millis();
+                        let filename = format!("{}_{}.ogg", current_ts, idx);
+                        let filepath = PathBuf::from(format!("{}/{}", directory, filename));
+                        let process_samples =
+                            samples[speech.start as usize..speech.end as usize].to_vec();
 
-                            write_opus(filename, process_samples, args.sample_rate)
-                                .map_err(|e| anyhow::anyhow!(e))?;
+                        write_opus(filepath, process_samples.clone(), args.sample_rate)
+                            .map_err(|e| anyhow::anyhow!(e))?;
 
-                            Ok(())
-                        },
-                    )?;
+                        // Calculate duration in seconds
+                        let duration_seconds = process_samples.len() as f64 / sample_rate;
+                        intervals.push(IntervalMetadata {
+                            filename,
+                            duration: format!("{:.6}", duration_seconds),
+                        });
+                    }
                 }
                 OutputType::Concatenated => {
                     let gathered_speeches = speeches
@@ -410,13 +454,43 @@ fn write_results(args: Args, speeches: &[utils::TimeStamp], samples: Vec<f32>) -
                         .cloned()
                         .collect::<Vec<f32>>();
 
-                    write_opus(output_path, gathered_speeches, args.sample_rate)
+                    write_opus(output_path.clone(), gathered_speeches.clone(), args.sample_rate)
                         .map_err(|e| anyhow::anyhow!(e))?;
+
+                    // For concatenated, we have a single output file
+                    let duration_seconds = gathered_speeches.len() as f64 / sample_rate;
+                    let filename = output_path
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or("output.ogg")
+                        .to_string();
+                    intervals.push(IntervalMetadata {
+                        filename,
+                        duration: format!("{:.6}", duration_seconds),
+                    });
                 }
             }
 
             info!("Saved to OPUS.");
         }
+    }
+
+    // Write metadata if requested
+    if let Some(metadata_path) = args.metadata {
+        let total_seconds: f64 = intervals
+            .iter()
+            .map(|i| i.duration.parse::<f64>().unwrap_or(0.0))
+            .sum();
+
+        let metadata = VadMetadata {
+            intervals,
+            total_seconds: format!("{:.6}", total_seconds),
+            compute_seconds: format!("{:.6}", compute_seconds),
+        };
+
+        let metadata_json = serde_json::to_string_pretty(&metadata)?;
+        std::fs::write(metadata_path, metadata_json)?;
+        info!("Metadata saved.");
     }
 
     Ok(())
