@@ -1,0 +1,57 @@
+name: Test Rust Code
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - '**.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/test-rust.yml'
+  pull_request:
+    branches:
+      - main
+      - dev
+    paths:
+      - '**.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/test-rust.yml'
+
+jobs:
+  test:
+    name: Test Rust Codebase
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "23.x"
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: test-stable
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Build
+        run: cargo build --verbose
