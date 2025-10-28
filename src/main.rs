@@ -11,6 +11,7 @@ use ort::execution_providers::{
     CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider,
     ExecutionProviderDispatch, TensorRTExecutionProvider,
 };
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 mod audio;
@@ -72,7 +73,7 @@ struct VadMetadata {
     compute_seconds: String,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version, long_about = None)]
 struct Args {
     /// Print the model info
@@ -102,8 +103,12 @@ struct Args {
     source_audio: Option<PathBuf>,
 
     /// The audio file path to process in VAD stage, it can be denoised signal (if source_audio is provided then final samples will be taken from source_audio)
-    #[arg(long)]
-    process_audio: PathBuf,
+    #[arg(long, conflicts_with = "process_folder")]
+    process_audio: Option<PathBuf>,
+
+    /// The folder path containing audio files to process in VAD stage
+    #[arg(long, conflicts_with = "process_audio")]
+    process_folder: Option<PathBuf>,
 
     /// The path of a final result file or directory
     #[arg(long)]
@@ -175,36 +180,43 @@ fn print_model_info(model_path: PathBuf, info: ModelInfo) -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
-    // Parse the arguments
-    let args = Args::parse();
+fn collect_audio_files(folder_path: &PathBuf) -> Result<Vec<PathBuf>> {
+    let audio_extensions = ["wav", "mp3", "flac", "ogg", "opus", "m4a", "aac"];
+    let mut audio_files = Vec::new();
 
-    tracing_subscriber::fmt::init();
+    for entry in std::fs::read_dir(folder_path)? {
+        let entry = entry?;
+        let path = entry.path();
 
-    let mut execution_providers: Vec<ExecutionProviderDispatch> =
-        vec![CPUExecutionProvider::default().build()];
-
-    if args.cuda {
-        execution_providers.insert(0, CUDAExecutionProvider::default().build());
+        if path.is_file() {
+            if let Some(extension) = path.extension() {
+                if let Some(ext_str) = extension.to_str() {
+                    if audio_extensions.contains(&ext_str.to_lowercase().as_str()) {
+                        audio_files.push(path);
+                    }
+                }
+            }
+        }
     }
 
-    if args.coreml {
-        execution_providers.insert(0, CoreMLExecutionProvider::default().build());
+    if audio_files.is_empty() {
+        return Err(anyhow::anyhow!(
+            "No audio files found in folder: {}",
+            folder_path.display()
+        ));
     }
 
-    if args.trt {
-        execution_providers.insert(0, TensorRTExecutionProvider::default().build());
-    }
+    audio_files.sort();
+    Ok(audio_files)
+}
 
-    // Print the model info
-    if args.print_model_info.is_some() {
-        print_model_info(args.model_path, args.print_model_info.unwrap())?;
-        return Ok(());
-    }
-
+fn process_single_file(
+    args: Args,
+    process_audio_path: PathBuf,
+    execution_providers: Vec<ExecutionProviderDispatch>,
+) -> Result<()> {
     // Load the audio files
     let start = std::time::Instant::now();
-    let process_audio_path = args.process_audio.clone();
     let process_samples = load_samples_from_audio_file(process_audio_path)?;
     info!(
         "Number of samples (process_audio): {:?}",
@@ -280,11 +292,9 @@ fn main() -> Result<()> {
                         compute_time.as_secs_f64(),
                     )
                 }
-                VadModel::Pyannote => {
-                    return Err(anyhow::anyhow!(
-                        "PyAnnote model is only supported with ONNX Runtime. Use --runtime onnxruntime"
-                    ));
-                }
+                VadModel::Pyannote => Err(anyhow::anyhow!(
+                    "PyAnnote model is only supported with ONNX Runtime. Use --runtime onnxruntime"
+                )),
             }
         }
         Runtime::Onnxruntime => {
@@ -351,6 +361,250 @@ fn main() -> Result<()> {
                 }
             }
         }
+    }
+}
+
+fn process_folder(
+    args: Args,
+    process_folder_path: PathBuf,
+    execution_providers: Vec<ExecutionProviderDispatch>,
+) -> Result<()> {
+    info!("Processing folder: {}", process_folder_path.display());
+
+    // Collect all audio files from the folder
+    let audio_files = collect_audio_files(&process_folder_path)?;
+    info!("Found {} audio files to process", audio_files.len());
+
+    // Ensure output directory exists
+    let output_base = args
+        .output
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("output"));
+    std::fs::create_dir_all(&output_base)?;
+
+    // Create the VAD params
+    let vad_params = utils::VadParams {
+        sample_rate: 16_000,
+        threshold: args.threshold,
+        debug: args.debug,
+        ..Default::default()
+    };
+
+    // Process files in parallel using rayon
+    let results: Vec<Result<()>> = audio_files
+        .par_iter()
+        .map(|audio_path| {
+            let file_stem = audio_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown");
+
+            info!("Processing: {}", audio_path.display());
+
+            // Load audio samples
+            let process_samples = load_samples_from_audio_file(audio_path.clone())?;
+
+            // Create output directory for this file
+            let file_output_dir = output_base.join(file_stem);
+            std::fs::create_dir_all(&file_output_dir)?;
+
+            // Process based on runtime
+            match args.runtime {
+                Runtime::Candle => {
+                    let device = candle_core::Device::Cpu;
+                    match args.vad_model {
+                        VadModel::Silero => {
+                            let silero = silero_v5::Silero::new(
+                                vad_params.clone(),
+                                args.model_path.clone(),
+                                device,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                vad_iter::VadIter::new(silero, vad_params.clone());
+                            let speeches_result = vad_iterator.process(process_samples.clone())?;
+                            let compute_time = start.elapsed();
+
+                            // Create args for this file
+                            let mut file_args = args.clone();
+                            file_args.output = Some(file_output_dir.clone());
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                        VadModel::Pyannote => Err(anyhow::anyhow!(
+                            "PyAnnote model is only supported with ONNX Runtime"
+                        )),
+                    }
+                }
+                Runtime::Onnxruntime => {
+                    // Note: ONNX Runtime initialization is not thread-safe when done multiple times
+                    // We assume it's already initialized in the main thread
+                    match args.vad_model {
+                        VadModel::Silero => {
+                            let silero = silero_v5_ort::Silero::new(
+                                vad_params.clone(),
+                                execution_providers.clone(),
+                                args.model_path.clone(),
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator_ort =
+                                vad_iter_ort::VadIter::new(silero, vad_params.clone());
+                            let speeches_result =
+                                vad_iterator_ort.process(process_samples.clone())?;
+                            let compute_time = start.elapsed();
+
+                            // Create args for this file
+                            let mut file_args = args.clone();
+                            file_args.output = Some(file_output_dir.clone());
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                        VadModel::Pyannote => {
+                            let pyannote = pyannote_vad_ort::PyAnnote::new(
+                                vad_params.clone(),
+                                execution_providers.clone(),
+                                args.model_path.clone(),
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut pyannote_vad_iterator = pyannote_vad_iter::PyAnnoteVadIter::new(
+                                pyannote,
+                                vad_params.clone(),
+                            );
+                            let speeches_result =
+                                pyannote_vad_iterator.process(process_samples.clone())?;
+                            let compute_time = start.elapsed();
+
+                            // Create args for this file
+                            let mut file_args = args.clone();
+                            file_args.output = Some(file_output_dir.clone());
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                    }
+                }
+            }
+        })
+        .collect();
+
+    // Check for errors
+    let mut error_count = 0;
+    for result in results {
+        if let Err(e) = result {
+            log::error!("Error processing file: {}", e);
+            error_count += 1;
+        }
+    }
+
+    if error_count > 0 {
+        return Err(anyhow::anyhow!("Failed to process {} files", error_count));
+    }
+
+    info!("Successfully processed all {} files", audio_files.len());
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    // Parse the arguments
+    let args = Args::parse();
+
+    tracing_subscriber::fmt::init();
+
+    // Validate that at least one input method is provided
+    if args.process_audio.is_none() && args.process_folder.is_none() {
+        return Err(anyhow::anyhow!(
+            "Either --process-audio or --process-folder must be provided"
+        ));
+    }
+
+    let mut execution_providers: Vec<ExecutionProviderDispatch> =
+        vec![CPUExecutionProvider::default().build()];
+
+    if args.cuda {
+        execution_providers.insert(0, CUDAExecutionProvider::default().build());
+    }
+
+    if args.coreml {
+        execution_providers.insert(0, CoreMLExecutionProvider::default().build());
+    }
+
+    if args.trt {
+        execution_providers.insert(0, TensorRTExecutionProvider::default().build());
+    }
+
+    // Print the model info
+    if args.print_model_info.is_some() {
+        print_model_info(args.model_path, args.print_model_info.unwrap())?;
+        return Ok(());
+    }
+
+    // Process single file or folder
+    if let Some(process_audio_path) = args.process_audio.clone() {
+        // Single file processing
+        process_single_file(args, process_audio_path, execution_providers)
+    } else if let Some(process_folder_path) = args.process_folder.clone() {
+        // Folder processing with parallelization
+        process_folder(args, process_folder_path, execution_providers)
+    } else {
+        Err(anyhow::anyhow!(
+            "Either --process-audio or --process-folder must be provided"
+        ))
     }
 }
 

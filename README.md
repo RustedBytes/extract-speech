@@ -33,6 +33,7 @@ A high-performance Rust tool for extracting speech segments from audio files usi
 ## Features
 
 - 🚀 **High Performance**: Built in Rust with optimized inference
+- ⚡ **Parallel Processing**: Process folders of audio files in parallel using rayon
 - 🎯 **Multiple Runtimes**: Support for both Candle and ONNX Runtime
 - 🎵 **Format Support**: Read various audio formats via Symphonia
 - 📦 **Multiple Output Formats**: WAV, Opus, and OGG
@@ -196,6 +197,36 @@ extract-speech \
   --output-format wav
 ```
 
+**Processing a folder of audio files in parallel:**
+
+```bash
+extract-speech \
+  --runtime candle \
+  --model-path ./models/xenova_silero_vad_v5.onnx \
+  --process-folder ./audio-folder \
+  --output ./output \
+  --output-format wav
+```
+
+This will:
+- Scan the folder for audio files (`.wav`, `.mp3`, `.flac`, `.ogg`, `.opus`, `.m4a`, `.aac`)
+- Process all files in parallel using multiple CPU cores for faster processing
+- Create a separate output subdirectory for each input file
+- Name subdirectories based on the input filename (without extension)
+
+For example, if you have `audio-folder/recording1.wav` and `audio-folder/recording2.mp3`, the output structure will be:
+```
+output/
+├── recording1/
+│   ├── 1730135784123_0.wav
+│   ├── 1730135784124_1.wav
+│   └── ...
+└── recording2/
+    ├── 1730135785456_0.wav
+    ├── 1730135785457_1.wav
+    └── ...
+```
+
 ### CLI Options
 
 | Option | Description | Default | Required |
@@ -203,9 +234,10 @@ extract-speech \
 | `--runtime` | Inference runtime: `candle` or `onnxruntime` | `candle` | No |
 | `--model-path` | Path to the VAD model file | - | Yes |
 | `--dylib-path` | Path to ONNX Runtime library (required for `onnxruntime`) | - | Conditional |
-| `--process-audio` | Input audio file to process | - | Yes |
+| `--process-audio` | Input audio file to process | - | Conditional* |
+| `--process-folder` | Input folder containing audio files to process in parallel | - | Conditional* |
 | `--source-audio` | Optional source audio for final extraction (if different from process-audio) | - | No |
-| `--output` | Output directory or file path | - | Yes |
+| `--output` | Output directory or file path | `output` | No |
 | `--metadata` | Path to write metadata JSON file with intervals and timing information | - | No |
 | `--output-type` | Output type: `files` or `concatenated` | `files` | No |
 | `--output-format` | Output format: `wav`, `opus`, or `ogg` | `wav` | No |
@@ -216,6 +248,8 @@ extract-speech \
 | `--coreml` | Enable CoreML acceleration (macOS) | `false` | No |
 | `--debug` | Enable debug output | `false` | No |
 | `--print-model-info` | Print model information: `graph`, `nodes`, or `io` | - | No |
+
+\* Either `--process-audio` or `--process-folder` must be provided, but not both.
 
 ### Output Formats
 
