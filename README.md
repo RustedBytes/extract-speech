@@ -2,8 +2,6 @@
 
 A high-performance Rust tool for extracting speech segments from audio files using Voice Activity Detection (VAD) models.
 
-- [test](https://lalalalal223.com)
-
 ## Table of Contents
 
 - [About](#about)
