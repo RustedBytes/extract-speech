@@ -49,7 +49,7 @@ jobs:
         run: readelf -p .comment target/release/extract-speech
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: extract-speech_x86_64_linux
           path: target/release/extract-speech
