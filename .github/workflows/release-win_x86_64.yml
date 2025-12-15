@@ -37,7 +37,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: extract-speech_x86_64_msvc_windows.exe
           path: target/release/extract-speech.exe

@@ -27,7 +27,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload release binary as artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: extract-speech
           path: target/release/extract-speech
