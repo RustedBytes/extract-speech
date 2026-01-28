@@ -303,8 +303,8 @@ fn process_single_file(
                 dylib_path
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("Invalid path: dylib_path"))?,
-            )
-            .commit()?;
+            )?
+            .commit();
 
             match args.vad_model {
                 VadModel::Silero => {
