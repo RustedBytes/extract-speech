@@ -12,17 +12,17 @@ license = "MIT"
 keywords = ["audio", "speech", "vad", "onnx", "inference"]
 categories = ["multimedia::audio"]
 include = [
-    ".cargo/config.toml",
-    "CHANGELOG.md",
-    "Cargo.lock",
-    "Cargo.toml",
-    "LICENSE",
-    "README.md",
-    "docs/**",
-    "examples/**",
-    "extract_speech.pyi",
-    "pyproject.toml",
-    "src/**",
+    "/.cargo/config.toml",
+    "/CHANGELOG.md",
+    "/Cargo.lock",
+    "/Cargo.toml",
+    "/LICENSE",
+    "/README.md",
+    "/docs/**",
+    "/examples/**",
+    "/extract_speech.pyi",
+    "/pyproject.toml",
+    "/src/**",
 ]
 
 [lib]
