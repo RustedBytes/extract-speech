@@ -65,6 +65,7 @@ For ONNX Runtime setup and compatible model requirements, see [Models and runtim
 
 ## Documentation
 
+- [Changelog](CHANGELOG.md) — notable changes by release
 - [Installation](docs/installation.md) — prerequisites, builds, and releases
 - [Usage](docs/usage.md) — inputs, outputs, CLI options, metadata, and examples
 - [Models and runtimes](docs/models-and-runtimes.md) — model compatibility and hardware acceleration
@@ -84,12 +85,12 @@ See the [development guide](docs/development.md) for the code layout and project
 ## Citation
 
 ```bibtex
-@software{Smoliakov_Extract_Speech_2025,
+@software{Smoliakov_Extract_Speech_2026,
   author = {Smoliakov, Yehor},
-  month = oct,
+  month = sep,
   title = {{extract-speech: Extract speech from audio files using Voice Activity Detection models}},
   url = {https://github.com/RustedBytes/extract-speech},
-  version = {0.5.1},
-  year = {2025}
+  version = {0.6.0},
+  year = {2026}
 }
 ```
