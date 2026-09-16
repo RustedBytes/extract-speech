@@ -7,6 +7,8 @@ on:
       - dev
     paths:
       - '**/*.rs'
+      - 'scripts/test-models.sh'
+      - 'test-audios/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/test-rust.yml'
@@ -16,6 +18,8 @@ on:
       - dev
     paths:
       - '**/*.rs'
+      - 'scripts/test-models.sh'
+      - 'test-audios/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/test-rust.yml'
@@ -58,3 +62,14 @@ jobs:
 
       - name: Build
         run: cargo build --verbose
+
+      - name: Cache model test dependencies
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/extract-speech-model-cache
+          key: model-tests-v1-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Run model integration tests
+        env:
+          MODEL_TEST_CACHE_DIR: ${{ runner.temp }}/extract-speech-model-cache
+        run: ./scripts/test-models.sh

@@ -9,3 +9,6 @@ release: fmt
 
 test:
     cargo test
+
+test-models:
+    ./scripts/test-models.sh

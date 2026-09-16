@@ -60,6 +60,15 @@ cargo run -- \
   --output target/manual-output
 ```
 
+Run the end-to-end model suite with:
+
+```bash
+just test-models
+# or: ./scripts/test-models.sh
+```
+
+The suite downloads checksum-verified, revision-pinned Silero and PyAnnote ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
+
 ## Design notes
 
 - VAD always runs on mono, 16 kHz samples. `--sample-rate` applies to final output.
