@@ -42,8 +42,10 @@ For the default Candle backend, download the ONNX Community Silero export:
 ```bash
 mkdir -p models
 curl -L \
-  https://huggingface.co/onnx-community/silero-vad/resolve/main/onnx/model.onnx \
+  https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx \
   -o models/silero-vad-v5.onnx
+echo 'a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808  models/silero-vad-v5.onnx' \
+  | sha256sum --check
 ```
 
 Run it with:
@@ -67,8 +69,10 @@ Download the FP32 model for Candle:
 ```bash
 mkdir -p models
 curl -L \
-  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/main/pulsevad/data/pulsevad_2.1k.onnx \
+  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/af25e79d66830a3fee74541812721f6158fc92b5/pulsevad/data/pulsevad_2.1k.onnx \
   -o models/pulsevad_2.1k.onnx
+echo '2b8c4874fc4ecd64916fc8726e2a8281b1cb9457c21f42a23a9776a4d538c665  models/pulsevad_2.1k.onnx' \
+  | sha256sum --check
 ```
 
 Run it with:
@@ -86,8 +90,10 @@ ONNX Runtime can use either the FP32 model or the QDQ-quantized INT8 model. Down
 
 ```bash
 curl -L \
-  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/main/pulsevad/data/pulsevad_2.1k_int8.onnx \
+  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/af25e79d66830a3fee74541812721f6158fc92b5/pulsevad/data/pulsevad_2.1k_int8.onnx \
   -o models/pulsevad_2.1k_int8.onnx
+echo '416061347a1e723ed15163acd51006bf3c513b27bb9f57d85e2c694cc44b8389  models/pulsevad_2.1k_int8.onnx' \
+  | sha256sum --check
 
 extract-speech \
   --runtime onnxruntime \
@@ -122,11 +128,15 @@ The exported model must accept mono audio shaped as `[batch, channel, samples]` 
 ```bash
 mkdir -p models/fsmn-vad
 curl -L \
-  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/main/model.onnx \
+  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/model.onnx \
   -o models/fsmn-vad/model.onnx
 curl -L \
-  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/main/vad.mvn \
+  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/vad.mvn \
   -o models/fsmn-vad/vad.mvn
+echo '756887ce01695a9bb00dd85ca0f743653de03b18ba54d2e9ef4f4bb9b3edbf9f  models/fsmn-vad/model.onnx' \
+  | sha256sum --check
+echo '6820fef9687708c4fc3fab2530179c8fcea6262daa25514380056cd8f6eb1754  models/fsmn-vad/vad.mvn' \
+  | sha256sum --check
 ```
 
 Run it with:
@@ -149,8 +159,10 @@ The quantized `model_quant.onnx` file is used in the same way. Keep `vad.mvn` (o
 ```bash
 mkdir -p models/ten-vad
 curl -L \
-  https://huggingface.co/TEN-framework/ten-vad/resolve/main/src/onnx_model/ten-vad.onnx \
+  https://huggingface.co/TEN-framework/ten-vad/resolve/bda8ffc78b1846c5c7cbd38f04e52deff49de707/src/onnx_model/ten-vad.onnx \
   -o models/ten-vad/ten-vad.onnx
+echo 'e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4  models/ten-vad/ten-vad.onnx' \
+  | sha256sum --check
 ```
 
 Run it with the reference `0.5` threshold:
@@ -174,8 +186,10 @@ TEN VAD consumes mono 16 kHz audio in 256-sample (16 ms) frames. `extract-speech
 ```bash
 mkdir -p models/marblenet
 curl -L \
-  https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/main/marblenet.onnx \
+  https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/e8786fe74e055954901eb553cc9c3145323981cc/marblenet.onnx \
   -o models/marblenet/marblenet.onnx
+echo '4ad3364be94d462b5fd4fa39910c24967dbb9dba436e27bcff7a88359515e491  models/marblenet/marblenet.onnx' \
+  | sha256sum --check
 ```
 
 Run the FP32 model with Candle:

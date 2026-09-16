@@ -122,22 +122,35 @@ readonly LIBRARY_EXAMPLE="$REPO_DIR/target/debug/examples/library-inference"
 validate_result() {
     local output_path="$1"
     local metadata_path="$2"
-    python3 - "$output_path" "$metadata_path" <<'PY'
+    local input_path="$3"
+    python3 - "$output_path" "$metadata_path" "$input_path" <<'PY'
 import json
+import math
 import sys
 import wave
 
-output_path, metadata_path = sys.argv[1:]
+output_path, metadata_path, input_path = sys.argv[1:]
 with wave.open(output_path, "rb") as audio:
     assert audio.getnchannels() == 1, "output is not mono"
     assert audio.getframerate() == 16_000, "unexpected output sample rate"
     assert audio.getnframes() > 0, "model produced no speech samples"
+    output_seconds = audio.getnframes() / audio.getframerate()
+
+with wave.open(input_path, "rb") as audio:
+    input_seconds = audio.getnframes() / audio.getframerate()
 
 with open(metadata_path, encoding="utf-8") as metadata_file:
     metadata = json.load(metadata_file)
 assert metadata["intervals"], "metadata contains no output interval"
-assert float(metadata["total_seconds"]) > 0.0, "metadata duration is zero"
-assert float(metadata["compute_seconds"]) >= 0.0, "invalid compute duration"
+metadata_seconds = float(metadata["total_seconds"])
+interval_seconds = sum(float(interval["duration"]) for interval in metadata["intervals"])
+assert 1.0 < output_seconds < input_seconds * 0.9, "implausible detected speech duration"
+assert math.isclose(metadata_seconds, output_seconds, abs_tol=1 / 16_000), \
+    "metadata duration does not match output audio"
+assert math.isclose(interval_seconds, metadata_seconds, abs_tol=1e-6), \
+    "metadata interval durations do not match the total"
+assert math.isfinite(float(metadata["compute_seconds"])), "invalid compute duration"
+assert float(metadata["compute_seconds"]) >= 0.0, "negative compute duration"
 PY
 }
 
@@ -169,7 +182,7 @@ run_case() {
         --output-type concatenated \
         --output "$output_path" \
         --metadata "$metadata_path"
-    validate_result "$output_path" "$metadata_path"
+    validate_result "$output_path" "$metadata_path" "$audio_path"
 }
 
 readonly TEST_AUDIO_FILES=(

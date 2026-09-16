@@ -8,7 +8,7 @@ use log::debug;
 use crate::{
     pulsevad_frontend::{HOP_SAMPLES, WINDOW_SAMPLES},
     utils,
-    vad_iter::VadModel,
+    vad_iter::{self, VadModel},
 };
 
 pub struct PulseVadIter<M> {
@@ -31,27 +31,59 @@ impl<M: VadModel> PulseVadIter<M> {
     ///
     /// # Errors
     ///
-    /// Returns an error when model reset or probability inference fails.
+    /// Returns an error for invalid parameters or samples, duration arithmetic
+    /// overflow, or when model reset or probability inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
+        vad_iter::validate_parameters(&self.params)?;
+        vad_iter::validate_samples(samples)?;
         self.model.reset()?;
         self.speeches.clear();
+
+        let min_speech_samples = vad_iter::milliseconds_to_samples(
+            self.params.min_speech_duration_ms,
+            self.params.sample_rate,
+            "minimum speech duration",
+        )?;
+        let min_silence_samples = vad_iter::milliseconds_to_samples(
+            self.params.min_silence_duration_ms,
+            self.params.sample_rate,
+            "minimum silence duration",
+        )?;
+        let speech_pad_samples = vad_iter::milliseconds_to_samples(
+            self.params.speech_pad_ms,
+            self.params.sample_rate,
+            "speech padding",
+        )?;
+        let max_speech_samples = if self.params.max_speech_duration_s.is_infinite() {
+            None
+        } else {
+            let total = vad_iter::seconds_to_samples(
+                self.params.max_speech_duration_s,
+                self.params.sample_rate,
+            )?;
+            let padding = speech_pad_samples
+                .checked_mul(2)
+                .ok_or_else(|| anyhow::anyhow!("speech padding exceeds usize"))?;
+            let maximum = total.checked_sub(padding).ok_or_else(|| {
+                anyhow::anyhow!("maximum speech duration is shorter than its padding")
+            })?;
+            anyhow::ensure!(
+                maximum >= WINDOW_SAMPLES,
+                "PulseVAD maximum speech duration must contain at least one model window"
+            );
+            Some(maximum)
+        };
 
         if samples.len() < WINDOW_SAMPLES {
             let mut padded = vec![0.0; WINDOW_SAMPLES];
             padded[..samples.len()].copy_from_slice(samples);
             if self.model.probability(&padded)? >= self.params.threshold {
-                self.speeches.push(utils::TimeStamp {
-                    start: 0,
-                    end: samples.len(),
-                });
+                self.push_if_long_enough(0, samples.len(), min_speech_samples);
             }
+            vad_iter::apply_speech_padding(&mut self.speeches, speech_pad_samples, samples.len());
             return Ok(&self.speeches);
         }
 
-        let min_speech_samples =
-            self.params.sample_rate * self.params.min_speech_duration_ms / 1_000;
-        let min_silence_samples =
-            self.params.sample_rate * self.params.min_silence_duration_ms / 1_000;
         let mut current_start = None;
         let mut last_speech_end = 0;
 
@@ -70,8 +102,15 @@ impl<M: VadModel> PulseVadIter<M> {
             }
 
             if is_speech {
-                current_start.get_or_insert(start);
+                let segment_start = *current_start.get_or_insert(start);
                 last_speech_end = start + WINDOW_SAMPLES;
+                if let Some(maximum) = max_speech_samples {
+                    if last_speech_end.saturating_sub(segment_start) > maximum {
+                        let segment_end = segment_start.saturating_add(maximum);
+                        self.push_if_long_enough(segment_start, segment_end, min_speech_samples);
+                        current_start = Some(segment_end);
+                    }
+                }
             } else if let Some(segment_start) = current_start {
                 if start.saturating_sub(last_speech_end) >= min_silence_samples {
                     self.push_if_long_enough(
@@ -91,6 +130,8 @@ impl<M: VadModel> PulseVadIter<M> {
                 min_speech_samples,
             );
         }
+
+        vad_iter::apply_speech_padding(&mut self.speeches, speech_pad_samples, samples.len());
 
         Ok(&self.speeches)
     }
@@ -152,16 +193,42 @@ mod tests {
             speeches,
             &[utils::TimeStamp {
                 start: 0,
-                end: WINDOW_SAMPLES + HOP_SAMPLES
+                end: WINDOW_SAMPLES + HOP_SAMPLES + 480
             }]
         );
     }
 
     #[test]
-    fn pads_short_audio_for_inference() {
+    fn short_audio_respects_minimum_speech_duration() {
         let mut iter = iterator(&[0.9]);
         let speeches = iter.process(&[0.0; 800]).unwrap();
 
-        assert_eq!(speeches, &[utils::TimeStamp { start: 0, end: 800 }]);
+        assert!(speeches.is_empty());
+    }
+
+    #[test]
+    fn continuous_speech_respects_maximum_duration() {
+        let params = utils::VadParams {
+            threshold: 0.5,
+            min_speech_duration_ms: 100,
+            speech_pad_ms: 30,
+            max_speech_duration_s: 0.3,
+            ..Default::default()
+        };
+        let mut iter = PulseVadIter::new(
+            FakeModel {
+                probabilities: [0.9; 5].into_iter().collect(),
+                frames_seen: 0,
+            },
+            params,
+        );
+        let samples = vec![0.0; WINDOW_SAMPLES + 4 * HOP_SAMPLES];
+
+        let speeches = iter.process(&samples).unwrap();
+
+        assert_eq!(speeches.len(), 3);
+        assert!(speeches
+            .iter()
+            .all(|speech| speech.end - speech.start <= 4_800));
     }
 }

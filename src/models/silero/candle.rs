@@ -39,13 +39,20 @@ impl Silero {
         let model: candle_onnx::onnx::ModelProto = candle_onnx::read_file(model_path)?;
 
         let sr_per_ms = vad_params.sample_rate / 1000;
-        let frame_size_samples = vad_params.frame_size * sr_per_ms;
+        let frame_size_samples = vad_params
+            .frame_size
+            .checked_mul(sr_per_ms)
+            .context("Silero frame size exceeds usize")?;
 
         let context_size: usize = if vad_params.sample_rate == 16_000 {
             64
         } else {
             32
         };
+        anyhow::ensure!(
+            frame_size_samples >= context_size,
+            "Silero frame must contain at least {context_size} samples"
+        );
 
         let sample_rate = Tensor::new(
             i64::try_from(vad_params.sample_rate).context("sample rate exceeds i64")?,
@@ -123,6 +130,16 @@ impl VadModel for Silero {
         let recurrent = outputs
             .get("stateN")
             .context("Silero model did not return a 'stateN' tensor")?;
+        anyhow::ensure!(
+            output.dims() == [1, 1],
+            "Silero returned output with shape {:?}; expected [1, 1]",
+            output.dims()
+        );
+        anyhow::ensure!(
+            recurrent.dims() == [2, 1, 128],
+            "Silero returned state with shape {:?}; expected [2, 1, 128]",
+            recurrent.dims()
+        );
 
         let output = output.flatten_all()?.to_vec1::<f32>()?;
         let prediction = output

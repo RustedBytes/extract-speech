@@ -109,6 +109,8 @@ class PythonBindingsTest(unittest.TestCase):
             extract_speech.download_model("unknown", cache_dir=CACHE_PATH)
         with self.assertRaises(ValueError):
             self.detector.detect([math.nan])
+        with self.assertRaises(ValueError):
+            self.detector.detect([1.01])
         with self.assertRaises(TypeError):
             self.detector.detect(object())
 

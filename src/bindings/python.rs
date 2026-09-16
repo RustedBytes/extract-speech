@@ -407,6 +407,11 @@ fn extract_samples(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Vec<f32
             "samples must contain only finite values",
         ));
     }
+    if samples.iter().any(|sample| !(-1.0..=1.0).contains(sample)) {
+        return Err(PyValueError::new_err(
+            "samples must be normalized to -1.0..=1.0",
+        ));
+    }
     Ok(samples)
 }
 

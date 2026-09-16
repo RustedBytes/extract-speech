@@ -182,8 +182,8 @@ fn slaney_mel_to_hz(mel: f64) -> f64 {
 /// Returns an error unless exactly two logits are supplied.
 pub fn speech_probability(logits: &[f32]) -> anyhow::Result<f32> {
     anyhow::ensure!(
-        logits.len() >= 2,
-        "MarbleNet returned fewer than two classes"
+        logits.len() == 2,
+        "MarbleNet must return exactly two classes"
     );
     let difference = logits[1] - logits[0];
     Ok(if difference >= 0.0 {

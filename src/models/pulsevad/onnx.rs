@@ -74,15 +74,13 @@ impl VadModel for PulseVad {
         }
 
         let outputs = self.session.run(SessionInputs::ValueSlice::<1>(&values))?;
-        let logits = outputs
+        let (shape, logits) = outputs
             .get("logits")
             .context("PulseVAD model did not return a 'logits' tensor")?
-            .try_extract_tensor::<f32>()?
-            .1;
+            .try_extract_tensor::<f32>()?;
         anyhow::ensure!(
-            logits.len() >= 2,
-            "PulseVAD returned {} logits; expected at least 2",
-            logits.len()
+            matches!(&**shape, [2] | [1, 2]),
+            "PulseVAD returned logits with shape {shape:?}; expected [2] or [1, 2]"
         );
 
         let difference = logits[1] - logits[0];

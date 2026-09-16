@@ -49,13 +49,20 @@ impl Silero {
         let session = session_builder.commit_from_file(model_path)?;
 
         let sr_per_ms = vad_params.sample_rate / 1000;
-        let frame_size_samples = vad_params.frame_size * sr_per_ms;
+        let frame_size_samples = vad_params
+            .frame_size
+            .checked_mul(sr_per_ms)
+            .context("Silero frame size exceeds usize")?;
 
         let context_size: usize = if vad_params.sample_rate == 16_000 {
             64
         } else {
             32
         };
+        anyhow::ensure!(
+            frame_size_samples >= context_size,
+            "Silero frame must contain at least {context_size} samples"
+        );
 
         let sample_rate = Array::from_vec(vec![
             i64::try_from(vad_params.sample_rate).context("sample rate exceeds i64")?
@@ -130,20 +137,28 @@ impl VadModel for Silero {
         let inputs = SessionInputs::ValueSlice::<3>(&values);
         let outputs = self.session.run(inputs)?;
 
-        self.state = outputs
+        let (state_shape, state_data) = outputs
             .get("stateN")
             .context("Silero model did not return a 'stateN' tensor")?
-            .try_extract_array::<f32>()
-            .context("Silero 'stateN' output was not an f32 tensor")?
-            .to_owned();
+            .try_extract_tensor::<f32>()
+            .context("Silero 'stateN' output was not an f32 tensor")?;
+        anyhow::ensure!(
+            **state_shape == [2, 1, 128],
+            "Silero returned state with shape {state_shape:?}; expected [2, 1, 128]"
+        );
+        self.state = ArrayD::from_shape_vec([2, 1, 128].as_slice(), state_data.to_vec())?;
         self.context = next_context.into_dyn();
 
-        let prediction = *outputs
+        let (output_shape, output_data) = outputs
             .get("output")
             .context("Silero model did not return an 'output' tensor")?
             .try_extract_tensor::<f32>()
-            .context("Silero 'output' was not an f32 tensor")?
-            .1
+            .context("Silero 'output' was not an f32 tensor")?;
+        anyhow::ensure!(
+            **output_shape == [1, 1],
+            "Silero returned output with shape {output_shape:?}; expected [1, 1]"
+        );
+        let prediction = *output_data
             .first()
             .context("Silero model returned an empty output tensor")?;
 

@@ -93,8 +93,10 @@ cargo build --release --features cli
 
 mkdir -p models
 curl -L \
-  https://huggingface.co/onnx-community/silero-vad/resolve/main/onnx/model.onnx \
+  https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx \
   -o models/silero-vad-v5.onnx
+echo 'a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808  models/silero-vad-v5.onnx' \
+  | sha256sum --check
 ```
 
 Extract each detected speech region to a WAV file:

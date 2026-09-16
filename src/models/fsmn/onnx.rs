@@ -118,11 +118,17 @@ impl FsmnVad {
 
             for (index, cache) in caches.iter_mut().enumerate() {
                 let name = format!("out_cache{index}");
-                *cache = outputs
+                let next_cache = outputs
                     .get(&name)
                     .with_context(|| format!("FSMN-VAD model did not return '{name}'"))?
                     .try_extract_array::<f32>()?
                     .to_owned();
+                anyhow::ensure!(
+                    next_cache.shape() == [1, CACHE_DIM, CACHE_ORDER, 1],
+                    "FSMN-VAD returned {name} with shape {:?}; expected [1, {CACHE_DIM}, {CACHE_ORDER}, 1]",
+                    next_cache.shape()
+                );
+                *cache = next_cache;
             }
         }
 

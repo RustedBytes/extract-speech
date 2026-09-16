@@ -23,11 +23,14 @@ impl FsmnVadIter {
     ///
     /// # Errors
     ///
-    /// Returns an error when FSMN feature extraction or inference fails.
+    /// Returns an error for invalid parameters or samples, or when FSMN
+    /// feature extraction or inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
+        vad_iter::validate_parameters(&self.params)?;
+        vad_iter::validate_samples(samples)?;
         let probabilities = self.model.speech_probabilities(samples)?;
         self.speeches =
-            vad_iter::segment_probabilities(&probabilities, samples.len(), self.params.clone());
+            vad_iter::segment_probabilities(&probabilities, samples.len(), &self.params)?;
         Ok(&self.speeches)
     }
 }

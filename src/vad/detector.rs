@@ -2,9 +2,9 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, Result};
 
-use crate::{utils::VAD_SAMPLE_RATE, SpeechSegment, VadParams};
+use crate::{utils::VAD_SAMPLE_RATE, vad_iter, SpeechSegment, VadParams};
 
 /// A VAD model family supported by [`Detector`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -98,11 +98,10 @@ impl DetectorBuilder {
     /// Returns an error for invalid parameters, unsupported model/runtime
     /// combinations, or backend initialization failures.
     pub fn build(mut self) -> Result<Detector> {
-        validate_parameters(&self.params)?;
-
         if self.model == Model::Ten {
             self.params.frame_size = ten_frame_size_ms();
         }
+        validate_model_parameters(self.model, &self.params)?;
 
         match self.runtime {
             Runtime::Candle => self.build_candle(),
@@ -228,7 +227,8 @@ impl Detector {
     ///
     /// # Errors
     ///
-    /// Returns an error if model reset, preprocessing, or inference fails.
+    /// Returns an error if samples are non-finite or outside the normalized
+    /// range, or if model reset, preprocessing, or inference fails.
     pub fn detect(&mut self, samples: &[f32]) -> Result<Vec<SpeechSegment>> {
         let segments: &[SpeechSegment] = match &mut self.backend {
             #[cfg(feature = "candle")]
@@ -283,23 +283,43 @@ enum Backend {
     Disabled,
 }
 
-fn validate_parameters(params: &VadParams) -> Result<()> {
-    ensure!(
-        params.sample_rate == VAD_SAMPLE_RATE,
-        "VAD inference requires {VAD_SAMPLE_RATE} Hz samples"
-    );
-    ensure!(
-        params.frame_size > 0,
-        "frame size must be greater than zero"
-    );
-    ensure!(
-        params.threshold.is_finite() && (0.0..=1.0).contains(&params.threshold),
-        "threshold must be between 0 and 1"
-    );
-    ensure!(
-        params.max_speech_duration_s > 0.0,
-        "maximum speech duration must be greater than zero"
-    );
+fn validate_model_parameters(model: Model, params: &VadParams) -> Result<()> {
+    vad_iter::validate_parameters(params)?;
+
+    if model == Model::Silero {
+        let frame_samples = vad_iter::milliseconds_to_samples(
+            params.frame_size,
+            params.sample_rate,
+            "Silero frame size",
+        )?;
+        let context_samples = if params.sample_rate == VAD_SAMPLE_RATE {
+            64
+        } else {
+            32
+        };
+        anyhow::ensure!(
+            frame_samples >= context_samples,
+            "Silero frame must contain at least {context_samples} samples"
+        );
+    }
+
+    if model == Model::PulseVad && params.max_speech_duration_s.is_finite() {
+        let total = vad_iter::seconds_to_samples(params.max_speech_duration_s, params.sample_rate)?;
+        let padding = vad_iter::milliseconds_to_samples(
+            params.speech_pad_ms,
+            params.sample_rate,
+            "speech padding",
+        )?
+        .checked_mul(2)
+        .ok_or_else(|| anyhow::anyhow!("speech padding exceeds usize"))?;
+        let unpadded = total.checked_sub(padding).ok_or_else(|| {
+            anyhow::anyhow!("maximum speech duration is shorter than its padding")
+        })?;
+        anyhow::ensure!(
+            unpadded >= crate::pulsevad_frontend::WINDOW_SAMPLES,
+            "PulseVAD maximum speech duration must contain at least one model window"
+        );
+    }
     Ok(())
 }
 
@@ -343,7 +363,7 @@ mod tests {
             sample_rate: 8_000,
             ..VadParams::default()
         };
-        assert!(validate_parameters(&params).is_err());
+        assert!(vad_iter::validate_parameters(&params).is_err());
     }
 
     #[test]
@@ -352,6 +372,16 @@ mod tests {
             threshold: f32::NAN,
             ..VadParams::default()
         };
-        assert!(validate_parameters(&params).is_err());
+        assert!(vad_iter::validate_parameters(&params).is_err());
+    }
+
+    #[test]
+    fn rejects_silero_frames_shorter_than_the_recurrent_context() {
+        let params = VadParams {
+            frame_size: 1,
+            ..VadParams::default()
+        };
+
+        assert!(validate_model_parameters(Model::Silero, &params).is_err());
     }
 }

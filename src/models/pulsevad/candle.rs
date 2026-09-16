@@ -54,14 +54,13 @@ impl VadModel for PulseVad {
         .context("failed to evaluate PulseVAD; Candle supports the FP32 PulseVAD model only")?;
         let logits = outputs
             .get("logits")
-            .context("PulseVAD model did not return a 'logits' tensor")?
-            .flatten_all()?
-            .to_vec1::<f32>()?;
+            .context("PulseVAD model did not return a 'logits' tensor")?;
         anyhow::ensure!(
-            logits.len() >= 2,
-            "PulseVAD returned {} logits; expected at least 2",
-            logits.len()
+            matches!(logits.dims(), [2] | [1, 2]),
+            "PulseVAD returned logits with shape {:?}; expected [2] or [1, 2]",
+            logits.dims()
         );
+        let logits = logits.flatten_all()?.to_vec1::<f32>()?;
 
         let probability = sigmoid(logits[1] - logits[0]);
         if self.debug {

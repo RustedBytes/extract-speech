@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworked the CLI to use the public `Detector` API instead of maintaining a separate model/runtime dispatch implementation.
 - Enabled Clippy's pedantic lint group in local development and CI, with narrowly scoped exceptions for intentional DSP conversions and exact test fixtures.
 
+### Fixed
+
+- Validate VAD parameters, normalized samples, and model output shapes before arithmetic, slicing, or tensor indexing.
+- Enforce maximum speech duration during continuous speech and consistently apply duration and padding parameters to PulseVAD and PyAnnote segmentation.
+- Pin and checksum-verify model URLs shown in the CLI and model setup guides.
+
 ## [0.6.0] - 2026-09-16
 
 ### Added

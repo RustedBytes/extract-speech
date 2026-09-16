@@ -78,8 +78,8 @@ impl MarbleNet {
             .context("MarbleNet model did not return an 'outputs' tensor")?
             .try_extract_tensor::<f32>()?;
         anyhow::ensure!(
-            shape.len() == 3 && shape[0] == 1 && shape[2] >= 2,
-            "MarbleNet returned logits with shape {shape:?}; expected [1, frames, classes]"
+            shape.len() == 3 && shape[0] == 1 && shape[2] == 2,
+            "MarbleNet returned logits with shape {shape:?}; expected [1, frames, 2]"
         );
         let frame_count = usize::try_from(shape[1]).context("invalid MarbleNet frame count")?;
         let class_count = usize::try_from(shape[2]).context("invalid MarbleNet class count")?;

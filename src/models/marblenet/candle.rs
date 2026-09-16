@@ -60,8 +60,8 @@ impl MarbleNet {
             .context("MarbleNet model did not return an 'outputs' tensor")?;
         let dimensions = output.dims();
         anyhow::ensure!(
-            dimensions.len() == 3 && dimensions[0] == 1 && dimensions[2] >= 2,
-            "MarbleNet returned logits with shape {dimensions:?}; expected [1, frames, classes]"
+            dimensions.len() == 3 && dimensions[0] == 1 && dimensions[2] == 2,
+            "MarbleNet returned logits with shape {dimensions:?}; expected [1, frames, 2]"
         );
         let class_count = dimensions[2];
         let logits = output.flatten_all()?.to_vec1::<f32>()?;

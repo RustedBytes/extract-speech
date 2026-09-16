@@ -34,7 +34,10 @@ pub struct MarbleNetIter<M> {
 impl<M: MarbleNetModel> MarbleNetIter<M> {
     #[must_use]
     pub fn new(model: M, mut params: utils::VadParams) -> Self {
-        params.frame_size = OUTPUT_FRAME_SAMPLES * 1_000 / params.sample_rate;
+        params.frame_size = OUTPUT_FRAME_SAMPLES
+            .checked_mul(1_000)
+            .and_then(|samples| samples.checked_div(params.sample_rate))
+            .unwrap_or(0);
         Self {
             model,
             params,
@@ -46,11 +49,14 @@ impl<M: MarbleNetModel> MarbleNetIter<M> {
     ///
     /// # Errors
     ///
-    /// Returns an error when probability inference fails.
+    /// Returns an error for invalid parameters or samples, or when probability
+    /// inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
+        vad_iter::validate_parameters(&self.params)?;
+        vad_iter::validate_samples(samples)?;
         let probabilities = self.model.speech_probabilities(samples)?;
         self.speeches =
-            vad_iter::segment_probabilities(&probabilities, samples.len(), self.params.clone());
+            vad_iter::segment_probabilities(&probabilities, samples.len(), &self.params)?;
         Ok(&self.speeches)
     }
 }
