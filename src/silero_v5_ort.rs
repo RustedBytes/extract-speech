@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use log::debug;
 use ndarray::{Array, Array2, ArrayBase, ArrayD, Dim, IxDynImpl, OwnedRepr};
 use ort::value::Value;
@@ -8,7 +9,7 @@ use ort::{
     session::{builder::GraphOptimizationLevel, builder::SessionBuilder, Session, SessionInputs},
 };
 
-use crate::utils;
+use crate::{utils, vad_iter::VadModel};
 
 #[derive(Debug)]
 pub struct Silero {
@@ -49,7 +50,7 @@ impl Silero {
             32
         };
 
-        let sample_rate = Array::from_shape_vec([1], vec![vad_params.sample_rate as i64]).unwrap();
+        let sample_rate = Array::from_vec(vec![vad_params.sample_rate as i64]);
 
         let state = ArrayD::<f32>::zeros([2, 1, 128].as_slice());
         let context = ArrayD::<f32>::zeros([1, context_size].as_slice());
@@ -63,22 +64,30 @@ impl Silero {
             context,
         })
     }
+}
 
-    pub fn reset(&mut self) {
+impl VadModel for Silero {
+    fn reset(&mut self) -> anyhow::Result<()> {
         self.state = ArrayD::<f32>::zeros([2, 1, 128].as_slice());
         self.context = ArrayD::<f32>::zeros([1, self.context.len()].as_slice());
+        Ok(())
     }
 
-    pub fn probability(&mut self, audio_frame: Vec<f32>) -> Result<f32, anyhow::Error> {
+    fn probability(&mut self, audio_frame: &[f32]) -> anyhow::Result<f32> {
+        anyhow::ensure!(
+            audio_frame.len() == self.frame_size_samples,
+            "expected {} audio samples, received {}",
+            self.frame_size_samples,
+            audio_frame.len()
+        );
+
         let next_data = audio_frame[self.frame_size_samples - self.context.len()..].to_vec();
-        let next_context =
-            Array2::<f32>::from_shape_vec([1, self.context.len()], next_data).unwrap();
+        let next_context = Array2::<f32>::from_shape_vec([1, self.context.len()], next_data)?;
 
         let context_data = self.context.clone();
 
-        let audio_frame_vec = Array2::<f32>::from_shape_vec([1, audio_frame.len()], audio_frame)
-            .unwrap()
-            .into_dyn();
+        let audio_frame_vec =
+            Array2::<f32>::from_shape_vec([1, audio_frame.len()], audio_frame.to_vec())?.into_dyn();
         let input_data = ndarray::concatenate(
             ndarray::Axis(1),
             &[context_data.view(), audio_frame_vec.view()],
@@ -87,7 +96,7 @@ impl Silero {
 
         let values = ort::inputs![
             Value::from_array(input_data)?,
-            Value::from_array(std::mem::take(&mut self.state))?,
+            Value::from_array(self.state.clone())?,
             Value::from_array(self.sample_rate.clone())?,
         ];
 
@@ -112,18 +121,22 @@ impl Silero {
         let inputs = SessionInputs::ValueSlice::<3>(&values);
         let outputs = self.session.run(inputs)?;
 
-        self.state = outputs["stateN"]
+        self.state = outputs
+            .get("stateN")
+            .context("Silero model did not return a 'stateN' tensor")?
             .try_extract_array::<f32>()
-            .unwrap()
+            .context("Silero 'stateN' output was not an f32 tensor")?
             .to_owned();
         self.context = next_context.into_dyn();
 
-        let prediction = *outputs["output"]
+        let prediction = *outputs
+            .get("output")
+            .context("Silero model did not return an 'output' tensor")?
             .try_extract_tensor::<f32>()
-            .unwrap()
+            .context("Silero 'output' was not an f32 tensor")?
             .1
             .first()
-            .unwrap();
+            .context("Silero model returned an empty output tensor")?;
 
         Ok(prediction)
     }

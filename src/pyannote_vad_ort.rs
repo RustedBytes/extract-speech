@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use log::debug;
 use ndarray::{Array, ArrayD};
 use ort::value::Value;
@@ -67,7 +68,9 @@ impl PyAnnote {
         let inputs = SessionInputs::ValueSlice::<1>(&values);
         let outputs = self.session.run(inputs)?;
 
-        let logits = &outputs["logits"];
+        let logits = outputs
+            .get("logits")
+            .context("PyAnnote model did not return a 'logits' tensor")?;
         let (shape, data) = logits.try_extract_tensor()?.to_owned();
 
         if self.vad_params.debug {

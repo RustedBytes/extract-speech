@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::path::Path;
+
+use anyhow::{Context, Result};
 
 use crate::resampler::resample;
 
@@ -32,6 +34,7 @@ fn write_opus_header<W: std::io::Write>(
     w: &mut W,
     channels: u8,
     sample_rate: u32,
+    pre_skip: u16,
 ) -> std::io::Result<()> {
     use byteorder::WriteBytesExt;
 
@@ -39,7 +42,7 @@ fn write_opus_header<W: std::io::Write>(
     w.write_all(b"OpusHead")?;
     w.write_u8(1)?; // version
     w.write_u8(channels)?; // channel count
-    w.write_u16::<byteorder::LittleEndian>(3840)?; // pre-skip
+    w.write_u16::<byteorder::LittleEndian>(pre_skip)?; // pre-skip
     w.write_u32::<byteorder::LittleEndian>(sample_rate)?; //  sample-rate in Hz
     w.write_i16::<byteorder::LittleEndian>(0)?; // output gain Q7.8 in dB
     w.write_u8(0)?; // channel map
@@ -70,15 +73,11 @@ fn write_ogg_48khz<W: std::io::Write>(
     let mut pw = ogg::PacketWriter::new(w);
     let channels = if stereo { 2 } else { 1 };
 
-    // Write the opus headers and tags
-    let mut head = Vec::new();
-    write_opus_header(&mut head, channels as u8, input_sample_rate)?;
-    pw.write_packet(head, 42, ogg::PacketWriteEndInfo::EndPage, 0)?;
-    let mut tags = Vec::new();
-    write_opus_tags(&mut tags)?;
-    pw.write_packet(tags, 42, ogg::PacketWriteEndInfo::EndPage, 0)?;
+    anyhow::ensure!(
+        pcm.len().is_multiple_of(channels),
+        "PCM sample count must be divisible by the channel count"
+    );
 
-    // Write the actual pcm data
     let mut encoder = {
         let channels = if stereo {
             opus::Channels::Stereo
@@ -87,23 +86,44 @@ fn write_ogg_48khz<W: std::io::Write>(
         };
         opus::Encoder::new(OPUS_SAMPLE_RATE, channels, opus::Application::Voip)?
     };
+    let pre_skip = u16::try_from(encoder.get_lookahead()?)
+        .context("Opus encoder returned an invalid lookahead")?;
+
+    // Write the opus headers and tags
+    let mut head = Vec::new();
+    write_opus_header(&mut head, channels as u8, input_sample_rate, pre_skip)?;
+    pw.write_packet(head, 42, ogg::PacketWriteEndInfo::EndPage, 0)?;
+    let mut tags = Vec::new();
+    write_opus_tags(&mut tags)?;
+    pw.write_packet(tags, 42, ogg::PacketWriteEndInfo::EndPage, 0)?;
+
+    // Write the actual pcm data
     let mut out_encoded = vec![0u8; 50_000];
 
-    let mut total_data = 0;
-    let n_frames = pcm.len() / (channels * OPUS_ENCODER_FRAME_SIZE);
-    for (frame_idx, pcm) in pcm
+    let input_frames = pcm.len() / channels;
+    let frames_to_encode = input_frames + pre_skip as usize;
+    let encoded_frames = frames_to_encode.div_ceil(OPUS_ENCODER_FRAME_SIZE);
+    let mut padded_pcm = vec![0.0; encoded_frames * OPUS_ENCODER_FRAME_SIZE * channels];
+    padded_pcm[..pcm.len()].copy_from_slice(pcm);
+
+    for (frame_index, frame) in padded_pcm
         .chunks_exact(OPUS_ENCODER_FRAME_SIZE * channels)
         .enumerate()
     {
-        total_data += (pcm.len() / channels) as u64;
-        let size = encoder.encode_float(pcm, &mut out_encoded)?;
+        let size = encoder.encode_float(frame, &mut out_encoded)?;
         let msg = out_encoded[..size].to_vec();
-        let inf = if frame_idx + 1 == n_frames {
-            ogg::PacketWriteEndInfo::EndPage
+        let is_last = frame_index + 1 == encoded_frames;
+        let end_info = if is_last {
+            ogg::PacketWriteEndInfo::EndStream
         } else {
             ogg::PacketWriteEndInfo::NormalPacket
         };
-        pw.write_packet(msg, 42, inf, total_data)?;
+        let granule_position = if is_last {
+            input_frames as u64 + pre_skip as u64
+        } else {
+            ((frame_index + 1) * OPUS_ENCODER_FRAME_SIZE) as u64
+        };
+        pw.write_packet(msg, 42, end_info, granule_position)?;
     }
 
     Ok(())
@@ -118,16 +138,12 @@ pub fn write_ogg_mono<W: std::io::Write>(w: &mut W, pcm: &[f32], sample_rate: u3
     }
 }
 
-pub fn write_opus(
-    filename: std::path::PathBuf,
-    data: Vec<f32>,
-    sample_rate: usize,
-) -> Result<(), Box<dyn std::error::Error + Sync + Send>> {
-    let w = std::fs::File::create(&filename)?;
+pub fn write_opus(filename: impl AsRef<Path>, data: &[f32], sample_rate: u32) -> Result<()> {
+    let w = std::fs::File::create(filename.as_ref())?;
 
     let mut w = std::io::BufWriter::new(w);
 
-    write_ogg_mono(&mut w, &data, sample_rate as u32)?;
+    write_ogg_mono(&mut w, data, sample_rate)?;
 
     Ok(())
 }
@@ -139,7 +155,7 @@ mod tests {
     #[test]
     fn test_write_opus_header() {
         let mut buffer = Vec::new();
-        let result = write_opus_header(&mut buffer, 1, 16000);
+        let result = write_opus_header(&mut buffer, 1, 16000, 312);
 
         assert!(result.is_ok());
         assert_eq!(&buffer[0..8], b"OpusHead");
@@ -150,7 +166,7 @@ mod tests {
     #[test]
     fn test_write_opus_header_stereo() {
         let mut buffer = Vec::new();
-        let result = write_opus_header(&mut buffer, 2, 48000);
+        let result = write_opus_header(&mut buffer, 2, 48000, 312);
 
         assert!(result.is_ok());
         assert_eq!(&buffer[0..8], b"OpusHead");
@@ -217,6 +233,27 @@ mod tests {
     }
 
     #[test]
+    fn test_write_ogg_mono_pads_short_input_and_ends_stream() {
+        let pcm = vec![0.25; 100];
+        let mut buffer = Vec::new();
+        write_ogg_mono(&mut buffer, &pcm, OPUS_SAMPLE_RATE).unwrap();
+
+        let mut reader = ogg::PacketReader::new(std::io::Cursor::new(buffer));
+        let mut packets = Vec::new();
+        while let Some(packet) = reader.read_packet().unwrap() {
+            packets.push(packet);
+        }
+
+        assert!(packets.len() >= 3, "expected headers and an audio packet");
+        assert!(packets.last().unwrap().last_in_stream());
+        let pre_skip = u16::from_le_bytes([packets[0].data[10], packets[0].data[11]]);
+        assert_eq!(
+            packets.last().unwrap().absgp_page(),
+            pcm.len() as u64 + pre_skip as u64
+        );
+    }
+
+    #[test]
     fn test_write_ogg_mono_requires_resampling() {
         // Test with a sample rate that requires resampling
         let sample_rate = 16000;
@@ -241,7 +278,7 @@ mod tests {
     #[test]
     fn test_opus_header_structure() {
         let mut buffer = Vec::new();
-        write_opus_header(&mut buffer, 1, 16000).unwrap();
+        write_opus_header(&mut buffer, 1, 16000, 312).unwrap();
 
         // Verify the structure matches the Opus specification
         assert_eq!(buffer.len(), 19); // OpusHead packet should be 19 bytes
@@ -257,7 +294,7 @@ mod tests {
 
         // Pre-skip (2 bytes, little-endian)
         let pre_skip = u16::from_le_bytes([buffer[10], buffer[11]]);
-        assert_eq!(pre_skip, 3840);
+        assert_eq!(pre_skip, 312);
 
         // Sample rate (4 bytes, little-endian)
         let sample_rate = u32::from_le_bytes([buffer[12], buffer[13], buffer[14], buffer[15]]);

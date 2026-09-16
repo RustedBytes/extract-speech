@@ -1,19 +1,33 @@
+use anyhow::Context;
 use fast_audio_resampler::{FirBackend, Quality, Resampler, ResamplerConfig};
 use log::info;
 
 pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Result<Vec<f32>> {
     info!("Resampling from {} to {}", sr_in, sr_out);
 
+    anyhow::ensure!(sr_in > 0, "input sample rate must be greater than zero");
+    anyhow::ensure!(sr_out > 0, "output sample rate must be greater than zero");
+    if sr_in == sr_out {
+        return Ok(in_samples.to_vec());
+    }
+
+    let input_rate = u32::try_from(sr_in).context("input sample rate exceeds u32")?;
+    let output_rate = u32::try_from(sr_out).context("output sample rate exceeds u32")?;
+
     let config = ResamplerConfig {
-        input_rate: sr_in as u32,
-        output_rate: sr_out as u32,
+        input_rate,
+        output_rate,
         channels: 1,
         quality: Quality::Best,
         backend: FirBackend::Auto,
         max_input_frames_per_chunk: None,
     };
     let mut resampler = Resampler::<f32>::new(config)?;
-    let output_frames = (in_samples.len() as u64 * sr_out as u64).div_ceil(sr_in as u64) as usize;
+    let output_frames = (in_samples.len() as u64)
+        .checked_mul(output_rate as u64)
+        .context("resampled output length overflowed")?
+        .div_ceil(input_rate as u64);
+    let output_frames = usize::try_from(output_frames).context("output is too large")?;
     let mut out_samples = Vec::with_capacity(output_frames);
 
     resampler.process(in_samples, &mut out_samples)?;

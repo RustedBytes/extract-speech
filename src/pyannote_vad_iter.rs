@@ -46,11 +46,11 @@ impl PyAnnoteVadIter {
         }
     }
 
-    pub fn process(&mut self, samples: Vec<f32>) -> Result<&[utils::TimeStamp], anyhow::Error> {
+    pub fn process(&mut self, samples: &[f32]) -> Result<&[utils::TimeStamp], anyhow::Error> {
         self.reset_states();
 
         // Get frame probabilities from PyAnnote model
-        let logits = self.pyannote.get_frame_probabilities(&samples)?;
+        let logits = self.pyannote.get_frame_probabilities(samples)?;
 
         // Convert logits to speech timestamps
         self.speeches = self.post_process_vad(&logits, samples.len())?;
@@ -135,8 +135,8 @@ impl PyAnnoteVadIter {
                     continue;
                 }
 
-                let start_sample = (start_time * self.config.sampling_rate) as i64;
-                let end_sample = (end_time * self.config.sampling_rate) as i64;
+                let start_sample = (start_time * self.config.sampling_rate) as usize;
+                let end_sample = ((end_time * self.config.sampling_rate) as usize).min(num_samples);
 
                 speeches.push(utils::TimeStamp {
                     start: start_sample,
@@ -151,11 +151,8 @@ impl PyAnnoteVadIter {
 
 // Softmax implementation for a 1D ArrayView
 fn softmax(x: ArrayView1<'_, f32>) -> Vec<f32> {
-    let mut softmax_array = x.to_vec();
-
-    for value in &mut softmax_array {
-        *value = std::f32::consts::E.powf(*value);
-    }
+    let max = x.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+    let mut softmax_array: Vec<f32> = x.iter().map(|value| (value - max).exp()).collect();
 
     let sum: f32 = softmax_array.iter().sum();
 
@@ -178,4 +175,21 @@ fn find_max(probs: &[f32]) -> (f32, usize) {
             }
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use ndarray::array;
+
+    use super::*;
+
+    #[test]
+    fn softmax_handles_large_logits() {
+        let logits = array![1_000.0, 1_001.0, 999.0];
+        let probabilities = softmax(logits.view());
+
+        assert!(probabilities.iter().all(|value| value.is_finite()));
+        assert!((probabilities.iter().sum::<f32>() - 1.0).abs() < 1e-6);
+        assert_eq!(find_max(&probabilities).1, 1);
+    }
 }

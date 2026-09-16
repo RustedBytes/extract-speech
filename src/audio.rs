@@ -1,8 +1,7 @@
 use std::io::ErrorKind::UnexpectedEof;
-use std::{fs::File, path::PathBuf};
+use std::{fs::File, path::Path};
 
-// use multiversion::multiversion;
-
+use anyhow::Context;
 use log::{info, warn};
 use symphonia::core::audio::sample::Sample;
 use symphonia::core::codecs::audio::AudioDecoderOptions;
@@ -12,14 +11,20 @@ use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 
-use crate::resampler::resample;
+use crate::{resampler::resample, utils::VAD_SAMPLE_RATE};
 
-// #[multiversion(targets("x86_64+avx", "aarch64+neon"))]
-pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::Error> {
-    let file = Box::new(File::open(path.clone()).unwrap());
+pub fn load_samples_from_audio_file(path: impl AsRef<Path>) -> anyhow::Result<Vec<f32>> {
+    let path = path.as_ref();
+    let file = Box::new(
+        File::open(path)
+            .with_context(|| format!("failed to open audio file {}", path.display()))?,
+    );
     let mss = MediaSourceStream::new(file, Default::default());
 
-    let hint = Hint::new();
+    let mut hint = Hint::new();
+    if let Some(extension) = path.extension().and_then(|extension| extension.to_str()) {
+        hint.with_extension(extension);
+    }
 
     // Use the default options when reading and decoding.
     let format_opts: FormatOptions = Default::default();
@@ -29,51 +34,45 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
     // Probe the media source stream for a format.
     let mut format = symphonia::default::get_probe()
         .probe(&hint, mss, format_opts, metadata_opts)
-        .unwrap();
+        .with_context(|| format!("failed to detect audio format for {}", path.display()))?;
 
     // Get the default track.
     let track = format
         .default_track(TrackType::Audio)
-        .expect("no supported audio tracks");
+        .context("audio file contains no supported audio track")?;
     let codec_params = track
         .codec_params
         .as_ref()
         .and_then(|params| params.audio())
-        .expect("audio track has no codec parameters")
+        .context("audio track has no audio codec parameters")?
         .clone();
     let track_id = track.id;
 
     // Get the sample_rate of the track.
-    let sample_rate = codec_params.sample_rate.unwrap_or(0);
+    let sample_rate = codec_params
+        .sample_rate
+        .context("audio track has no sample-rate information")?;
 
     // Check if the track has stereo channels.
-    match &codec_params.channels {
-        Some(channels) => {
-            if channels.count() > 1 {
-                warn!("Stereo channels detected, will be converted to mono");
-            }
-
-            if channels.count() > 2 {
-                return Err(anyhow::anyhow!(
-                    "Unsupported number of channels: {}. Only mono and stereo are supported.",
-                    channels.count()
-                ));
-            }
-        }
-        None => {
-            return Err(anyhow::anyhow!("No channel information available"));
-        }
-    }
-
-    let is_stereo = codec_params
+    let channels = codec_params
         .channels
         .as_ref()
-        .is_some_and(|channels| channels.count() > 1);
+        .context("audio track has no channel information")?;
+    if channels.count() > 1 {
+        warn!("Stereo channels detected, will be converted to mono");
+    }
+    if channels.count() > 2 {
+        return Err(anyhow::anyhow!(
+            "unsupported channel count {}; only mono and stereo are supported",
+            channels.count()
+        ));
+    }
+    let is_stereo = channels.count() == 2;
 
     // Create a decoder for the track.
     let mut decoder = symphonia::default::get_codecs()
         .make_audio_decoder(&codec_params, &decoder_opts)
-        .expect("unsupported codec");
+        .context("unsupported audio codec")?;
     let mut samples: Vec<f32> = Vec::new();
 
     loop {
@@ -88,9 +87,7 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
                     }
                 }
 
-                info!("Error loading next packet: {}", err);
-
-                break;
+                return Err(err).context("failed to read the next audio packet");
             }
         };
 
@@ -106,8 +103,10 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
                 samples.resize(old_len + audio_buf.samples_interleaved(), f32::MID);
                 audio_buf.copy_to_slice_interleaved(&mut samples[old_len..]);
             }
-            Err(Error::DecodeError(_)) => (),
-            Err(_) => break,
+            Err(Error::DecodeError(error)) => {
+                warn!("Skipping undecodable audio packet: {error}");
+            }
+            Err(error) => return Err(error).context("failed to decode audio packet"),
         }
     }
 
@@ -115,7 +114,7 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
         return Err(anyhow::anyhow!("No samples found in the audio file"));
     }
 
-    // If it's strereo, convert to mono
+    // If it's stereo, convert to mono.
     if is_stereo {
         samples = samples
             .as_chunks::<2>()
@@ -125,18 +124,13 @@ pub fn load_samples_from_audio_file(path: PathBuf) -> Result<Vec<f32>, anyhow::E
             .collect::<Vec<_>>();
     }
 
-    const REQUIRED_SAMPLE_RATE: u32 = 16_000;
-    if sample_rate != REQUIRED_SAMPLE_RATE {
+    if sample_rate as usize != VAD_SAMPLE_RATE {
         info!(
             "Sample rate mismatch: expected {}, got {}, resampling...",
-            REQUIRED_SAMPLE_RATE, sample_rate
+            VAD_SAMPLE_RATE, sample_rate
         );
 
-        samples = resample(
-            &samples,
-            sample_rate as usize,
-            REQUIRED_SAMPLE_RATE as usize,
-        )?;
+        samples = resample(&samples, sample_rate as usize, VAD_SAMPLE_RATE)?;
     }
 
     Ok(samples)

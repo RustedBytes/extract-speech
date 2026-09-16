@@ -1,3 +1,5 @@
+pub const VAD_SAMPLE_RATE: usize = 16_000;
+
 #[derive(Debug, Clone)]
 pub struct VadParams {
     pub frame_size: usize,
@@ -19,16 +21,16 @@ impl Default for VadParams {
             speech_pad_ms: 30,
             min_speech_duration_ms: 250,
             max_speech_duration_s: f32::INFINITY,
-            sample_rate: 16_000,
+            sample_rate: VAD_SAMPLE_RATE,
             debug: false,
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TimeStamp {
-    pub start: i64,
-    pub end: i64,
+    pub start: usize,
+    pub end: usize,
 }
 
 impl std::fmt::Display for TimeStamp {
@@ -64,7 +66,7 @@ mod tests {
             speech_pad_ms: 50,
             min_speech_duration_ms: 300,
             max_speech_duration_s: 30.0,
-            sample_rate: 16_000,
+            sample_rate: VAD_SAMPLE_RATE,
             debug: true,
         };
 

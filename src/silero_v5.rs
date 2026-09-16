@@ -1,15 +1,16 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use anyhow::Context;
 use candle_core::{DType, Tensor};
 use log::debug;
 
-use crate::utils;
+use crate::{utils, vad_iter::VadModel};
 
 #[derive(Debug)]
 struct State {
     frame_size_samples: usize,
-    state: *mut Tensor,
-    context: *mut Tensor,
+    recurrent: Tensor,
+    context: Tensor,
 }
 
 #[derive(Debug)]
@@ -41,13 +42,10 @@ impl Silero {
 
         let sample_rate = Tensor::new(vad_params.sample_rate as i64, &device)?;
 
-        let init_state = Tensor::zeros((2, 1, 128), DType::F32, &device)?;
-        let init_context = Tensor::zeros((1, context_size), DType::F32, &device)?;
-
         let state = State {
             frame_size_samples,
-            state: Box::into_raw(Box::new(init_state)),
-            context: Box::into_raw(Box::new(init_context)),
+            recurrent: Tensor::zeros((2, 1, 128), DType::F32, &device)?,
+            context: Tensor::zeros((1, context_size), DType::F32, &device)?,
         };
 
         Ok(Self {
@@ -59,29 +57,39 @@ impl Silero {
             device,
         })
     }
+}
 
-    pub fn reset(&mut self) {}
+impl VadModel for Silero {
+    fn reset(&mut self) -> anyhow::Result<()> {
+        self.state.recurrent = Tensor::zeros((2, 1, 128), DType::F32, &self.device)?;
+        self.state.context = Tensor::zeros((1, self.context_size), DType::F32, &self.device)?;
+        Ok(())
+    }
 
-    pub fn probability(&mut self, audio_frame: Vec<f32>) -> Result<f32, anyhow::Error> {
-        let state = &mut self.state;
+    fn probability(&mut self, audio_frame: &[f32]) -> anyhow::Result<f32> {
+        anyhow::ensure!(
+            audio_frame.len() == self.state.frame_size_samples,
+            "expected {} audio samples, received {}",
+            self.state.frame_size_samples,
+            audio_frame.len()
+        );
 
-        let next_data = audio_frame[state.frame_size_samples - self.context_size..].to_vec();
+        let next_data = audio_frame[self.state.frame_size_samples - self.context_size..].to_vec();
         let next_context = Tensor::from_vec(next_data, (1, self.context_size), &self.device)?;
 
-        let context_tensor = unsafe { state.context.as_ref().unwrap() };
-        let context_data = context_tensor.squeeze(0).unwrap().to_vec1::<f32>()?;
+        let context_data = self.state.context.squeeze(0)?.to_vec1::<f32>()?;
+        let mut input_data = Vec::with_capacity(self.context_size + audio_frame.len());
+        input_data.extend_from_slice(&context_data);
+        input_data.extend_from_slice(audio_frame);
         let input = Tensor::from_vec(
-            [context_data, audio_frame].concat(),
-            (1, self.context_size + state.frame_size_samples),
+            input_data,
+            (1, self.context_size + audio_frame.len()),
             &self.device,
         )?;
 
         let inputs = HashMap::from_iter([
             ("input".to_string(), input),
-            (
-                "state".to_string(),
-                unsafe { state.state.as_ref().unwrap() }.clone(),
-            ),
+            ("state".to_string(), self.state.recurrent.clone()),
             ("sr".to_string(), self.sample_rate.clone()),
         ]);
 
@@ -97,24 +105,23 @@ impl Silero {
             }
         }
 
-        let out = candle_onnx::simple_eval(&self.model, inputs).unwrap();
+        let outputs = candle_onnx::simple_eval(&self.model, inputs)?;
 
-        let output = &out["output"];
-        let state_n = &out["stateN"];
+        let output = outputs
+            .get("output")
+            .context("Silero model did not return an 'output' tensor")?;
+        let recurrent = outputs
+            .get("stateN")
+            .context("Silero model did not return a 'stateN' tensor")?;
 
         let output = output.flatten_all()?.to_vec1::<f32>()?;
+        let prediction = output
+            .first()
+            .copied()
+            .context("Silero model returned an empty output tensor")?;
 
-        // assert_eq!(output.len(), 1);
-        // assert_eq!(state_n.dims(), &[2, 1, 128]);
-
-        unsafe {
-            state.context.replace(next_context);
-            state.state.replace(state_n.clone());
-        };
-
-        let prediction = output[0];
-
-        drop(output);
+        self.state.context = next_context;
+        self.state.recurrent = recurrent.clone();
 
         Ok(prediction)
     }

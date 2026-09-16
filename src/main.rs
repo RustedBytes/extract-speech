@@ -1,15 +1,15 @@
-#[cfg(feature = "accelerate-src")]
+#[cfg(all(feature = "accelerate-src", target_vendor = "apple"))]
 extern crate accelerate_src;
 
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use clap::{Parser, ValueEnum};
 use log::{debug, info};
 use ort::ep::{CoreML, ExecutionProviderDispatch, TensorRT, CPU, CUDA};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 mod audio;
 mod opus;
@@ -20,7 +20,6 @@ mod silero_v5;
 mod silero_v5_ort;
 pub(crate) mod utils;
 mod vad_iter;
-mod vad_iter_ort;
 
 use crate::audio::load_samples_from_audio_file;
 use crate::opus::write_opus;
@@ -30,6 +29,16 @@ enum OutputFormat {
     Wav,
     Opus,
     Ogg,
+}
+
+impl OutputFormat {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Wav => "wav",
+            Self::Opus => "opus",
+            Self::Ogg => "ogg",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
@@ -57,13 +66,13 @@ enum OutputType {
     Concatenated,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 struct IntervalMetadata {
     filename: String,
     duration: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 struct VadMetadata {
     intervals: Vec<IntervalMetadata>,
     total_seconds: String,
@@ -92,11 +101,11 @@ struct Args {
     vad_model: VadModel,
 
     /// Path to the ONNX runtime dynamic library
-    #[arg(long)]
+    #[arg(long, required_if_eq("runtime", "onnxruntime"))]
     dylib_path: Option<PathBuf>,
 
     /// The source audio file path
-    #[arg(long)]
+    #[arg(long, conflicts_with = "process_folder")]
     source_audio: Option<PathBuf>,
 
     /// The audio file path to process in VAD stage, it can be denoised signal (if source_audio is provided then final samples will be taken from source_audio)
@@ -108,8 +117,8 @@ struct Args {
     process_folder: Option<PathBuf>,
 
     /// The path of a final result file or directory
-    #[arg(long)]
-    output: Option<PathBuf>,
+    #[arg(long, default_value = "output")]
+    output: PathBuf,
 
     /// Path to write metadata JSON file
     #[arg(long)]
@@ -153,11 +162,14 @@ struct Args {
 fn print_model_info(model_path: PathBuf, info: ModelInfo) -> Result<()> {
     let model = candle_onnx::read_file(model_path)?;
 
-    let graph = model.clone().graph.unwrap();
+    let graph = model
+        .graph
+        .as_ref()
+        .context("ONNX model contains no graph")?;
 
     match info {
         ModelInfo::Graph => {
-            debug!("{model:#?}");
+            println!("{model:#?}");
         }
         ModelInfo::Nodes => {
             for node in graph.node.iter() {
@@ -177,7 +189,7 @@ fn print_model_info(model_path: PathBuf, info: ModelInfo) -> Result<()> {
     Ok(())
 }
 
-fn collect_audio_files(folder_path: &PathBuf) -> Result<Vec<PathBuf>> {
+fn collect_audio_files(folder_path: &std::path::Path) -> Result<Vec<PathBuf>> {
     let audio_extensions = ["wav", "mp3", "flac", "ogg", "opus", "m4a", "aac"];
     let mut audio_files = Vec::new();
 
@@ -220,12 +232,8 @@ fn process_single_file(
         process_samples.len()
     );
 
-    let mut source_samples = process_samples.clone();
-
-    if args.source_audio.is_some() {
-        let source_audio_path = args.source_audio.clone().unwrap();
-
-        source_samples = load_samples_from_audio_file(source_audio_path)?;
+    let source_samples = if let Some(source_audio_path) = args.source_audio.as_ref() {
+        let source_samples = load_samples_from_audio_file(source_audio_path)?;
 
         info!(
             "Number of samples (source_audio): {:?}",
@@ -237,13 +245,18 @@ fn process_single_file(
                 "The number of samples in the source and process audio files should be the same."
             ));
         }
-    }
+
+        Some(source_samples)
+    } else {
+        None
+    };
+    let output_samples = source_samples.as_deref().unwrap_or(&process_samples);
 
     info!("Retrieved audio files in: {:?}", start.elapsed());
 
     // Create the VAD params
     let vad_params = utils::VadParams {
-        sample_rate: 16_000,
+        sample_rate: utils::VAD_SAMPLE_RATE,
         threshold: args.threshold,
         debug: args.debug,
         ..Default::default()
@@ -277,7 +290,7 @@ fn process_single_file(
                     // Do inference
                     let start = std::time::Instant::now();
                     let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
-                    let speeches_result = vad_iterator.process(process_samples.to_vec())?;
+                    let speeches_result = vad_iterator.process(&process_samples)?;
                     let compute_time = start.elapsed();
                     info!("Inference time: {:?}", compute_time);
 
@@ -285,7 +298,7 @@ fn process_single_file(
                     write_results(
                         args,
                         speeches_result,
-                        source_samples,
+                        output_samples,
                         compute_time.as_secs_f64(),
                     )
                 }
@@ -295,14 +308,6 @@ fn process_single_file(
             }
         }
         Runtime::Onnxruntime => {
-            let dylib_path = args.dylib_path.clone().unwrap();
-            ort::init_from(
-                dylib_path
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("Invalid path: dylib_path"))?,
-            )?
-            .commit();
-
             match args.vad_model {
                 VadModel::Silero => {
                     // Create the VAD model
@@ -316,8 +321,8 @@ fn process_single_file(
 
                     // Do inference
                     let start = std::time::Instant::now();
-                    let mut vad_iterator_ort = vad_iter_ort::VadIter::new(silero, vad_params);
-                    let speeches_result = vad_iterator_ort.process(process_samples.to_vec())?;
+                    let mut vad_iterator = vad_iter::VadIter::new(silero, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
                     let compute_time = start.elapsed();
                     info!("Inference time: {:?}", compute_time);
 
@@ -325,7 +330,7 @@ fn process_single_file(
                     write_results(
                         args,
                         speeches_result,
-                        source_samples,
+                        output_samples,
                         compute_time.as_secs_f64(),
                     )
                 }
@@ -343,8 +348,7 @@ fn process_single_file(
                     let start = std::time::Instant::now();
                     let mut pyannote_vad_iterator =
                         pyannote_vad_iter::PyAnnoteVadIter::new(pyannote, vad_params);
-                    let speeches_result =
-                        pyannote_vad_iterator.process(process_samples.to_vec())?;
+                    let speeches_result = pyannote_vad_iterator.process(&process_samples)?;
                     let compute_time = start.elapsed();
                     info!("Inference time: {:?}", compute_time);
 
@@ -352,7 +356,7 @@ fn process_single_file(
                     write_results(
                         args,
                         speeches_result,
-                        source_samples,
+                        output_samples,
                         compute_time.as_secs_f64(),
                     )
                 }
@@ -373,15 +377,12 @@ fn process_folder(
     info!("Found {} audio files to process", audio_files.len());
 
     // Ensure output directory exists
-    let output_base = args
-        .output
-        .clone()
-        .unwrap_or_else(|| PathBuf::from("output"));
+    let output_base = args.output.clone();
     std::fs::create_dir_all(&output_base)?;
 
     // Create the VAD params
     let vad_params = utils::VadParams {
-        sample_rate: 16_000,
+        sample_rate: utils::VAD_SAMPLE_RATE,
         threshold: args.threshold,
         debug: args.debug,
         ..Default::default()
@@ -401,9 +402,16 @@ fn process_folder(
             // Load audio samples
             let process_samples = load_samples_from_audio_file(audio_path.clone())?;
 
-            // Create output directory for this file
-            let file_output_dir = output_base.join(file_stem);
-            std::fs::create_dir_all(&file_output_dir)?;
+            let file_output_path = match args.output_type {
+                OutputType::Files => {
+                    let directory = output_base.join(file_stem);
+                    std::fs::create_dir_all(&directory)?;
+                    directory
+                }
+                OutputType::Concatenated => {
+                    output_base.join(format!("{}.{}", file_stem, args.output_format.extension()))
+                }
+            };
 
             // Process based on runtime
             match args.runtime {
@@ -420,12 +428,12 @@ fn process_folder(
                             let start = std::time::Instant::now();
                             let mut vad_iterator =
                                 vad_iter::VadIter::new(silero, vad_params.clone());
-                            let speeches_result = vad_iterator.process(process_samples.clone())?;
+                            let speeches_result = vad_iterator.process(&process_samples)?;
                             let compute_time = start.elapsed();
 
                             // Create args for this file
                             let mut file_args = args.clone();
-                            file_args.output = Some(file_output_dir.clone());
+                            file_args.output = file_output_path.clone();
                             file_args.metadata = args.metadata.as_ref().map(|m| {
                                 let metadata_stem =
                                     m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
@@ -440,7 +448,7 @@ fn process_folder(
                             write_results(
                                 file_args,
                                 speeches_result,
-                                process_samples,
+                                &process_samples,
                                 compute_time.as_secs_f64(),
                             )?;
 
@@ -464,15 +472,14 @@ fn process_folder(
                             )?;
 
                             let start = std::time::Instant::now();
-                            let mut vad_iterator_ort =
-                                vad_iter_ort::VadIter::new(silero, vad_params.clone());
-                            let speeches_result =
-                                vad_iterator_ort.process(process_samples.clone())?;
+                            let mut vad_iterator =
+                                vad_iter::VadIter::new(silero, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
                             let compute_time = start.elapsed();
 
                             // Create args for this file
                             let mut file_args = args.clone();
-                            file_args.output = Some(file_output_dir.clone());
+                            file_args.output = file_output_path.clone();
                             file_args.metadata = args.metadata.as_ref().map(|m| {
                                 let metadata_stem =
                                     m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
@@ -487,7 +494,7 @@ fn process_folder(
                             write_results(
                                 file_args,
                                 speeches_result,
-                                process_samples,
+                                &process_samples,
                                 compute_time.as_secs_f64(),
                             )?;
 
@@ -507,12 +514,12 @@ fn process_folder(
                                 vad_params.clone(),
                             );
                             let speeches_result =
-                                pyannote_vad_iterator.process(process_samples.clone())?;
+                                pyannote_vad_iterator.process(&process_samples)?;
                             let compute_time = start.elapsed();
 
                             // Create args for this file
                             let mut file_args = args.clone();
-                            file_args.output = Some(file_output_dir.clone());
+                            file_args.output = file_output_path.clone();
                             file_args.metadata = args.metadata.as_ref().map(|m| {
                                 let metadata_stem =
                                     m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
@@ -527,7 +534,7 @@ fn process_folder(
                             write_results(
                                 file_args,
                                 speeches_result,
-                                process_samples,
+                                &process_samples,
                                 compute_time.as_secs_f64(),
                             )?;
 
@@ -563,11 +570,35 @@ fn main() -> Result<()> {
 
     tracing_subscriber::fmt::init();
 
+    if let Some(info) = args.print_model_info {
+        return print_model_info(args.model_path.clone(), info);
+    }
+
     // Validate that at least one input method is provided
     if args.process_audio.is_none() && args.process_folder.is_none() {
         return Err(anyhow::anyhow!(
             "Either --process-audio or --process-folder must be provided"
         ));
+    }
+    anyhow::ensure!(
+        args.threshold.is_finite() && (0.0..=1.0).contains(&args.threshold),
+        "threshold must be between 0 and 1"
+    );
+    anyhow::ensure!(
+        args.sample_rate > 0,
+        "sample rate must be greater than zero"
+    );
+    u32::try_from(args.sample_rate).context("sample rate exceeds u32")?;
+
+    if args.runtime == Runtime::Onnxruntime {
+        let dylib_path = args
+            .dylib_path
+            .as_deref()
+            .context("--dylib-path is required for ONNX Runtime")?;
+        let dylib_path = dylib_path
+            .to_str()
+            .context("ONNX Runtime library path is not valid UTF-8")?;
+        ort::init_from(dylib_path)?.commit();
     }
 
     let mut execution_providers: Vec<ExecutionProviderDispatch> = vec![CPU::default().build()];
@@ -582,12 +613,6 @@ fn main() -> Result<()> {
 
     if args.trt {
         execution_providers.insert(0, TensorRT::default().build());
-    }
-
-    // Print the model info
-    if let Some(info) = args.print_model_info {
-        print_model_info(args.model_path, info)?;
-        return Ok(());
     }
 
     // Process single file or folder
@@ -607,53 +632,48 @@ fn main() -> Result<()> {
 fn write_results(
     args: Args,
     speeches: &[utils::TimeStamp],
-    samples: Vec<f32>,
+    samples: &[f32],
     compute_seconds: f64,
 ) -> Result<()> {
     info!("Speeches: {}", speeches.len());
 
-    let output_path = args.output.unwrap();
-
-    // Create the output directory if it doesn't have extension
-    if output_path.extension().is_none() {
-        std::fs::create_dir_all(output_path.clone())?;
+    let output_path = args.output;
+    match args.output_type {
+        OutputType::Files => std::fs::create_dir_all(&output_path)?,
+        OutputType::Concatenated => {
+            if let Some(parent) = output_path
+                .parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+            {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
     }
-    let directory = output_path.display();
 
-    // Collect metadata
     let mut intervals: Vec<IntervalMetadata> = Vec::new();
-    let sample_rate = 16_000.0;
+    let output_sample_rate = u32::try_from(args.sample_rate).context("sample rate exceeds u32")?;
 
-    // Write the output
     match args.output_format {
         OutputFormat::Wav => {
             let spec = hound::WavSpec {
                 channels: 1,
-                sample_rate: 16_000,
+                sample_rate: output_sample_rate,
                 bits_per_sample: 16,
                 sample_format: hound::SampleFormat::Int,
             };
 
             match args.output_type {
                 OutputType::Files => {
-                    // Sequential processing to collect filenames in order
                     for (idx, speech) in speeches.iter().enumerate() {
                         let current_ts = Utc::now().timestamp_millis();
                         let filename = format!("{}_{}.wav", current_ts, idx);
-                        let filepath = format!("{}/{}", directory, filename);
-                        let mut writer = hound::WavWriter::create(&filepath, spec)?;
+                        let filepath = output_path.join(&filename);
+                        let segment = checked_segment(samples, speech)?;
+                        let output_samples = prepare_output_samples(segment, args.sample_rate)?;
+                        write_wav(&filepath, &output_samples, spec)?;
 
-                        let segment_samples =
-                            samples[speech.start as usize..speech.end as usize].to_vec();
-                        for sample in &segment_samples {
-                            let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-                            writer.write_sample(x)?;
-                        }
-
-                        writer.finalize()?;
-
-                        // Calculate duration in seconds
-                        let duration_seconds = segment_samples.len() as f64 / sample_rate;
+                        let duration_seconds =
+                            output_samples.len() as f64 / output_sample_rate as f64;
                         intervals.push(IntervalMetadata {
                             filename,
                             duration: format!("{:.6}", duration_seconds),
@@ -661,25 +681,12 @@ fn write_results(
                     }
                 }
                 OutputType::Concatenated => {
-                    let gathered_speeches = speeches
-                        .iter()
-                        .flat_map(|timestamp| {
-                            &samples[timestamp.start as usize..timestamp.end as usize]
-                        })
-                        .cloned()
-                        .collect::<Vec<f32>>();
+                    let gathered_speeches = gather_speeches(samples, speeches)?;
+                    let output_samples =
+                        prepare_output_samples(&gathered_speeches, args.sample_rate)?;
+                    write_wav(&output_path, &output_samples, spec)?;
 
-                    let mut writer = hound::WavWriter::create(&output_path, spec)?;
-
-                    for sample in &gathered_speeches {
-                        let x = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-                        writer.write_sample(x)?;
-                    }
-
-                    writer.finalize()?;
-
-                    // For concatenated, we have a single output file
-                    let duration_seconds = gathered_speeches.len() as f64 / sample_rate;
+                    let duration_seconds = output_samples.len() as f64 / output_sample_rate as f64;
                     let filename = output_path
                         .file_name()
                         .and_then(|f| f.to_str())
@@ -695,20 +702,20 @@ fn write_results(
             info!("Saved to WAV.");
         }
         OutputFormat::Opus | OutputFormat::Ogg => {
+            let extension = args.output_format.extension();
             match args.output_type {
                 OutputType::Files => {
                     for (idx, speech) in speeches.iter().enumerate() {
                         let current_ts = Utc::now().timestamp_millis();
-                        let filename = format!("{}_{}.ogg", current_ts, idx);
-                        let filepath = PathBuf::from(format!("{}/{}", directory, filename));
-                        let process_samples =
-                            samples[speech.start as usize..speech.end as usize].to_vec();
+                        let filename = format!("{}_{}.{}", current_ts, idx, extension);
+                        let filepath = output_path.join(&filename);
+                        let segment = checked_segment(samples, speech)?;
+                        let output_samples = prepare_output_samples(segment, args.sample_rate)?;
 
-                        write_opus(filepath, process_samples.clone(), args.sample_rate)
-                            .map_err(|e| anyhow::anyhow!(e))?;
+                        write_opus(filepath, &output_samples, output_sample_rate)?;
 
-                        // Calculate duration in seconds
-                        let duration_seconds = process_samples.len() as f64 / sample_rate;
+                        let duration_seconds =
+                            output_samples.len() as f64 / output_sample_rate as f64;
                         intervals.push(IntervalMetadata {
                             filename,
                             duration: format!("{:.6}", duration_seconds),
@@ -716,23 +723,13 @@ fn write_results(
                     }
                 }
                 OutputType::Concatenated => {
-                    let gathered_speeches = speeches
-                        .iter()
-                        .flat_map(|timestamp| {
-                            &samples[timestamp.start as usize..timestamp.end as usize]
-                        })
-                        .cloned()
-                        .collect::<Vec<f32>>();
+                    let gathered_speeches = gather_speeches(samples, speeches)?;
+                    let output_samples =
+                        prepare_output_samples(&gathered_speeches, args.sample_rate)?;
 
-                    write_opus(
-                        output_path.clone(),
-                        gathered_speeches.clone(),
-                        args.sample_rate,
-                    )
-                    .map_err(|e| anyhow::anyhow!(e))?;
+                    write_opus(&output_path, &output_samples, output_sample_rate)?;
 
-                    // For concatenated, we have a single output file
-                    let duration_seconds = gathered_speeches.len() as f64 / sample_rate;
+                    let duration_seconds = output_samples.len() as f64 / output_sample_rate as f64;
                     let filename = output_path
                         .file_name()
                         .and_then(|f| f.to_str())
@@ -768,4 +765,103 @@ fn write_results(
     }
 
     Ok(())
+}
+
+fn checked_segment<'a>(samples: &'a [f32], timestamp: &utils::TimeStamp) -> Result<&'a [f32]> {
+    anyhow::ensure!(
+        timestamp.start <= timestamp.end,
+        "invalid speech interval: start {} is after end {}",
+        timestamp.start,
+        timestamp.end
+    );
+    samples
+        .get(timestamp.start..timestamp.end)
+        .with_context(|| {
+            format!(
+                "speech interval {}..{} exceeds the {} available samples",
+                timestamp.start,
+                timestamp.end,
+                samples.len()
+            )
+        })
+}
+
+fn gather_speeches(samples: &[f32], speeches: &[utils::TimeStamp]) -> Result<Vec<f32>> {
+    let capacity = speeches
+        .iter()
+        .map(|speech| speech.end.saturating_sub(speech.start))
+        .sum();
+    let mut gathered = Vec::with_capacity(capacity);
+    for speech in speeches {
+        gathered.extend_from_slice(checked_segment(samples, speech)?);
+    }
+    Ok(gathered)
+}
+
+fn prepare_output_samples(samples: &[f32], output_sample_rate: usize) -> Result<Vec<f32>> {
+    if output_sample_rate == utils::VAD_SAMPLE_RATE {
+        Ok(samples.to_vec())
+    } else {
+        resampler::resample(samples, utils::VAD_SAMPLE_RATE, output_sample_rate)
+    }
+}
+
+fn write_wav(path: &std::path::Path, samples: &[f32], spec: hound::WavSpec) -> Result<()> {
+    let mut writer = hound::WavWriter::create(path, spec)?;
+    for sample in samples {
+        let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+        writer.write_sample(value)?;
+    }
+    writer.finalize()?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn onnx_runtime_requires_a_dynamic_library_path() {
+        let result = Args::try_parse_from([
+            "extract-speech",
+            "--runtime",
+            "onnxruntime",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ]);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn output_defaults_to_output_directory() {
+        let args = Args::try_parse_from([
+            "extract-speech",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ])
+        .unwrap();
+
+        assert_eq!(args.output, PathBuf::from("output"));
+    }
+
+    #[test]
+    fn invalid_speech_interval_is_rejected() {
+        let samples = vec![0.0; 10];
+        let timestamp = utils::TimeStamp { start: 8, end: 11 };
+
+        assert!(checked_segment(&samples, &timestamp).is_err());
+    }
+
+    #[test]
+    fn output_samples_are_resampled_to_requested_rate() {
+        let samples = vec![0.0; utils::VAD_SAMPLE_RATE];
+        let output = prepare_output_samples(&samples, 8_000).unwrap();
+
+        assert!((output.len() as isize - 8_000).abs() <= 2);
+    }
 }

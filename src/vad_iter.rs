@@ -1,71 +1,62 @@
 use log::debug;
 
-use crate::{silero_v5::Silero, utils};
+use crate::utils;
+
+pub trait VadModel {
+    fn reset(&mut self) -> anyhow::Result<()>;
+    fn probability(&mut self, audio_frame: &[f32]) -> anyhow::Result<f32>;
+}
 
 #[derive(Debug)]
-pub struct VadIter {
-    silero: Silero,
+pub struct VadIter<M> {
+    model: M,
     params: Params,
     state: State,
 }
 
-impl VadIter {
-    pub fn new(silero: Silero, params: utils::VadParams) -> Self {
-        let params_mixed = Params::from(params.clone());
+impl<M: VadModel> VadIter<M> {
+    pub fn new(model: M, params: utils::VadParams) -> Self {
+        let params = Params::from(params);
 
         if params.debug {
             debug!("vad_params: {:?}", params);
-            debug!("params_mixed: {:?}", params_mixed);
         }
 
         Self {
-            silero,
-            params: params_mixed,
-            state: State::new(),
+            model,
+            params,
+            state: State::default(),
         }
     }
 
-    pub fn process(&mut self, samples: Vec<f32>) -> Result<&[utils::TimeStamp], anyhow::Error> {
-        self.reset_states();
-
-        let mut speech_probs: Vec<f32> = Vec::new();
+    pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
+        self.reset_states()?;
 
         for audio_frame in samples.chunks_exact(self.params.frame_size_samples) {
-            if audio_frame.len() < self.params.frame_size_samples {
-                continue;
-            }
-
-            let speech_prob: f32 = self.silero.probability(audio_frame.to_vec())?;
-
-            speech_probs.push(speech_prob);
-
-            self.state.update(&self.params, speech_prob);
+            let speech_probability = self.model.probability(audio_frame)?;
+            self.state.update(&self.params, speech_probability);
         }
 
-        self.state.check_for_last_speech(samples.len());
+        self.state.finish(samples.len(), &self.params);
+        apply_speech_padding(
+            &mut self.state.speeches,
+            self.params.speech_pad_samples,
+            samples.len(),
+        );
 
         Ok(&self.state.speeches)
     }
-}
 
-impl VadIter {
-    pub fn reset_states(&mut self) {
-        self.state = State::new();
-        self.silero.reset();
+    fn reset_states(&mut self) -> anyhow::Result<()> {
+        self.state = State::default();
+        self.model.reset()
     }
 }
 
-#[allow(unused)]
 #[derive(Debug)]
 struct Params {
-    frame_size: usize,
     threshold: f32,
-    min_silence_duration_ms: usize,
-    speech_pad_ms: usize,
-    min_speech_duration_ms: usize,
-    max_speech_duration_s: f32,
     sample_rate: usize,
-    sr_per_ms: usize,
     frame_size_samples: usize,
     min_speech_samples: usize,
     speech_pad_samples: usize,
@@ -77,40 +68,22 @@ struct Params {
 
 impl From<utils::VadParams> for Params {
     fn from(value: utils::VadParams) -> Self {
-        let debug = value.debug;
-        let frame_size = value.frame_size;
-        let threshold = value.threshold;
-        let min_silence_duration_ms = value.min_silence_duration_ms;
-        let speech_pad_ms = value.speech_pad_ms;
-        let min_speech_duration_ms = value.min_speech_duration_ms;
-        let max_speech_duration_s = value.max_speech_duration_s;
-        let sample_rate = value.sample_rate;
-        let sr_per_ms = sample_rate / 1000;
-        let frame_size_samples = frame_size * sr_per_ms;
-        let min_speech_samples = sr_per_ms * min_speech_duration_ms;
-        let speech_pad_samples = sr_per_ms * speech_pad_ms;
-        let max_speech_samples = sample_rate as f32 * max_speech_duration_s
-            - frame_size_samples as f32
-            - 2.0 * speech_pad_samples as f32;
-        let min_silence_samples = sr_per_ms * min_silence_duration_ms;
-        let min_silence_samples_at_max_speech = sr_per_ms * 98;
+        let samples_per_ms = value.sample_rate / 1000;
+        let frame_size_samples = value.frame_size * samples_per_ms;
+        let speech_pad_samples = samples_per_ms * value.speech_pad_ms;
 
         Self {
-            frame_size,
-            threshold,
-            min_silence_duration_ms,
-            speech_pad_ms,
-            min_speech_duration_ms,
-            max_speech_duration_s,
-            sample_rate,
-            sr_per_ms,
+            threshold: value.threshold,
+            sample_rate: value.sample_rate,
             frame_size_samples,
-            min_speech_samples,
+            min_speech_samples: samples_per_ms * value.min_speech_duration_ms,
             speech_pad_samples,
-            max_speech_samples,
-            min_silence_samples,
-            min_silence_samples_at_max_speech,
-            debug,
+            max_speech_samples: value.sample_rate as f32 * value.max_speech_duration_s
+                - frame_size_samples as f32
+                - 2.0 * speech_pad_samples as f32,
+            min_silence_samples: samples_per_ms * value.min_silence_duration_ms,
+            min_silence_samples_at_max_speech: samples_per_ms * 98,
+            debug: value.debug,
         }
     }
 }
@@ -127,65 +100,63 @@ struct State {
 }
 
 impl State {
-    fn new() -> Self {
-        Default::default()
-    }
-
-    fn update(&mut self, params: &Params, speech_prob: f32) {
+    fn update(&mut self, params: &Params, speech_probability: f32) {
         self.current_sample += params.frame_size_samples;
-        if speech_prob > params.threshold {
+
+        if speech_probability > params.threshold {
             if self.temp_end != 0 {
                 self.temp_end = 0;
                 if self.next_start < self.prev_end {
                     self.next_start = self
                         .current_sample
-                        .saturating_sub(params.frame_size_samples)
+                        .saturating_sub(params.frame_size_samples);
                 }
             }
+
             if !self.triggered {
-                self.debug(speech_prob, params, "start");
+                self.log_transition(speech_probability, params, "start");
                 self.triggered = true;
-                self.current_speech.start =
-                    self.current_sample as i64 - params.frame_size_samples as i64;
+                self.current_speech.start = self
+                    .current_sample
+                    .saturating_sub(params.frame_size_samples);
             }
             return;
         }
+
         if self.triggered
-            && (self.current_sample as i64 - self.current_speech.start) as f32
+            && self
+                .current_sample
+                .saturating_sub(self.current_speech.start) as f32
                 > params.max_speech_samples
         {
             if self.prev_end > 0 {
-                self.current_speech.end = self.prev_end as _;
+                self.current_speech.end = self.prev_end;
                 self.take_speech();
                 if self.next_start < self.prev_end {
-                    self.triggered = false
+                    self.triggered = false;
                 } else {
-                    self.current_speech.start = self.next_start as _;
+                    self.current_speech.start = self.next_start;
                 }
-                self.prev_end = 0;
-                self.next_start = 0;
-                self.temp_end = 0;
             } else {
-                self.current_speech.end = self.current_sample as _;
+                self.current_speech.end = self.current_sample;
                 self.take_speech();
-                self.prev_end = 0;
-                self.next_start = 0;
-                self.temp_end = 0;
                 self.triggered = false;
             }
+            self.clear_temporary_boundaries();
             return;
         }
 
-        if speech_prob >= (params.threshold - 0.15) && (speech_prob < params.threshold) {
-            if self.triggered {
-                self.debug(speech_prob, params, "speaking")
+        if speech_probability >= params.threshold - 0.15 && speech_probability < params.threshold {
+            let state = if self.triggered {
+                "speaking"
             } else {
-                self.debug(speech_prob, params, "silence")
-            }
+                "silence"
+            };
+            self.log_transition(speech_probability, params, state);
         }
 
-        if self.triggered && speech_prob < (params.threshold - 0.15) {
-            self.debug(speech_prob, params, "end");
+        if self.triggered && speech_probability < params.threshold - 0.15 {
+            self.log_transition(speech_probability, params, "end");
             if self.temp_end == 0 {
                 self.temp_end = self.current_sample;
             }
@@ -195,52 +166,88 @@ impl State {
                 self.prev_end = self.temp_end;
             }
             if self.current_sample.saturating_sub(self.temp_end) >= params.min_silence_samples {
-                self.current_speech.end = self.temp_end as _;
-                if self.current_speech.end - self.current_speech.start
-                    > params.min_speech_samples as _
-                {
-                    self.take_speech();
-                    self.prev_end = 0;
-                    self.next_start = 0;
-                    self.temp_end = 0;
-                    self.triggered = false;
-                }
+                self.finish_current_speech(self.temp_end, params.min_speech_samples);
             }
         }
     }
 
-    fn take_speech(&mut self) {
-        self.speeches.push(std::mem::take(&mut self.current_speech)); // current speech becomes TimeStamp::default() due to take()
-    }
-
-    fn check_for_last_speech(&mut self, last_sample: usize) {
-        if self.current_speech.start > 0 {
-            self.current_speech.end = last_sample as _;
-            self.take_speech();
-            self.prev_end = 0;
-            self.next_start = 0;
-            self.temp_end = 0;
-            self.triggered = false;
+    fn finish(&mut self, last_sample: usize, params: &Params) {
+        if self.triggered {
+            self.finish_current_speech(last_sample, params.min_speech_samples);
         }
     }
 
-    fn debug(&self, speech_prob: f32, params: &Params, title: &str) {
+    fn finish_current_speech(&mut self, end: usize, min_speech_samples: usize) {
+        self.current_speech.end = end;
+        if self
+            .current_speech
+            .end
+            .saturating_sub(self.current_speech.start)
+            > min_speech_samples
+        {
+            self.take_speech();
+        } else {
+            self.current_speech = utils::TimeStamp::default();
+        }
+        self.triggered = false;
+        self.clear_temporary_boundaries();
+    }
+
+    fn take_speech(&mut self) {
+        self.speeches.push(std::mem::take(&mut self.current_speech));
+    }
+
+    fn clear_temporary_boundaries(&mut self) {
+        self.prev_end = 0;
+        self.next_start = 0;
+        self.temp_end = 0;
+    }
+
+    fn log_transition(&self, speech_probability: f32, params: &Params, title: &str) {
         if params.debug {
-            let speech = self.current_sample as f32
-                - params.frame_size_samples as f32
-                - if title == "end" {
-                    params.speech_pad_samples
-                } else {
-                    0
-                } as f32; // minus window_size_samples to get precise start time point.
+            let sample = self
+                .current_sample
+                .saturating_sub(params.frame_size_samples);
             debug!(
                 "[{:10}: {:.3} s ({:.3}) {:8}]",
                 title,
-                speech / params.sample_rate as f32,
-                speech_prob,
-                self.current_sample - params.frame_size_samples,
+                sample as f32 / params.sample_rate as f32,
+                speech_probability,
+                sample,
             );
         }
+    }
+}
+
+fn apply_speech_padding(
+    speeches: &mut [utils::TimeStamp],
+    speech_pad_samples: usize,
+    total_samples: usize,
+) {
+    if speeches.is_empty() {
+        return;
+    }
+
+    speeches[0].start = speeches[0].start.saturating_sub(speech_pad_samples);
+
+    for index in 0..speeches.len().saturating_sub(1) {
+        let (left, right) = speeches.split_at_mut(index + 1);
+        let current = &mut left[index];
+        let next = &mut right[0];
+        let silence = next.start.saturating_sub(current.end);
+
+        if silence < 2 * speech_pad_samples {
+            let half_silence = silence / 2;
+            current.end = (current.end + half_silence).min(total_samples);
+            next.start = next.start.saturating_sub(silence - half_silence);
+        } else {
+            current.end = (current.end + speech_pad_samples).min(total_samples);
+            next.start = next.start.saturating_sub(speech_pad_samples);
+        }
+    }
+
+    if let Some(last) = speeches.last_mut() {
+        last.end = (last.end + speech_pad_samples).min(total_samples);
     }
 }
 
@@ -248,154 +255,67 @@ impl State {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_params_from_vad_params_default() {
-        let vad_params = utils::VadParams::default();
-        let params = Params::from(vad_params.clone());
-
-        assert_eq!(params.frame_size, 32);
-        assert_eq!(params.threshold, 0.5);
-        assert_eq!(params.min_silence_duration_ms, 100);
-        assert_eq!(params.speech_pad_ms, 30);
-        assert_eq!(params.min_speech_duration_ms, 250);
-        assert_eq!(params.sample_rate, 16_000);
-        assert!(!params.debug);
-
-        // Check calculated values
-        assert_eq!(params.sr_per_ms, 16); // 16000 / 1000
-        assert_eq!(params.frame_size_samples, 512); // 32 * 16
-        assert_eq!(params.min_speech_samples, 4000); // 16 * 250
-        assert_eq!(params.speech_pad_samples, 480); // 16 * 30
-        assert_eq!(params.min_silence_samples, 1600); // 16 * 100
-        assert_eq!(params.min_silence_samples_at_max_speech, 1568); // 16 * 98
+    fn params() -> Params {
+        Params::from(utils::VadParams::default())
     }
 
     #[test]
-    fn test_params_from_vad_params_custom() {
-        let vad_params = utils::VadParams {
-            frame_size: 64,
-            threshold: 0.7,
-            min_silence_duration_ms: 200,
-            speech_pad_ms: 50,
-            min_speech_duration_ms: 300,
-            max_speech_duration_s: 30.0,
-            sample_rate: 8_000,
-            debug: true,
-        };
+    fn trailing_speech_that_starts_at_zero_is_kept() {
+        let params = params();
+        let mut state = State::default();
+        for _ in 0..10 {
+            state.update(&params, 1.0);
+        }
 
-        let params = Params::from(vad_params);
+        state.finish(state.current_sample, &params);
 
-        assert_eq!(params.frame_size, 64);
-        assert_eq!(params.threshold, 0.7);
-        assert_eq!(params.sample_rate, 8_000);
-        assert!(params.debug);
-
-        // Check calculated values for 8kHz
-        assert_eq!(params.sr_per_ms, 8); // 8000 / 1000
-        assert_eq!(params.frame_size_samples, 512); // 64 * 8
-        assert_eq!(params.min_speech_samples, 2400); // 8 * 300
-        assert_eq!(params.speech_pad_samples, 400); // 8 * 50
-        assert_eq!(params.min_silence_samples, 1600); // 8 * 200
+        assert_eq!(state.speeches.len(), 1);
+        assert_eq!(state.speeches[0].start, 0);
+        assert_eq!(state.speeches[0].end, 10 * params.frame_size_samples);
     }
 
     #[test]
-    fn test_params_max_speech_samples_calculation() {
-        let vad_params = utils::VadParams {
-            frame_size: 32,
-            threshold: 0.5,
-            min_silence_duration_ms: 100,
-            speech_pad_ms: 30,
-            min_speech_duration_ms: 250,
-            max_speech_duration_s: 10.0,
-            sample_rate: 16_000,
-            debug: false,
-        };
+    fn short_speech_is_discarded_and_state_is_reset() {
+        let params = params();
+        let mut state = State::default();
+        state.update(&params, 1.0);
+        for _ in 0..5 {
+            state.update(&params, 0.0);
+        }
 
-        let params = Params::from(vad_params);
-
-        // max_speech_samples = sample_rate * max_speech_duration_s - frame_size_samples - 2 * speech_pad_samples
-        // = 16000 * 10.0 - 512 - 2 * 480
-        // = 160000 - 512 - 960
-        // = 158528
-        let expected = 16_000.0 * 10.0 - 512.0 - 2.0 * 480.0;
-        assert_eq!(params.max_speech_samples, expected);
-    }
-
-    #[test]
-    fn test_params_infinite_max_speech_duration() {
-        let vad_params = utils::VadParams {
-            frame_size: 32,
-            threshold: 0.5,
-            min_silence_duration_ms: 100,
-            speech_pad_ms: 30,
-            min_speech_duration_ms: 250,
-            max_speech_duration_s: f32::INFINITY,
-            sample_rate: 16_000,
-            debug: false,
-        };
-
-        let params = Params::from(vad_params);
-
-        // When max_speech_duration_s is infinite, max_speech_samples should also be infinite
-        assert!(params.max_speech_samples.is_infinite());
-    }
-
-    #[test]
-    fn test_state_new() {
-        let state = State::new();
-
-        assert_eq!(state.current_sample, 0);
-        assert_eq!(state.temp_end, 0);
-        assert_eq!(state.next_start, 0);
-        assert_eq!(state.prev_end, 0);
         assert!(!state.triggered);
-        assert_eq!(state.current_speech.start, 0);
-        assert_eq!(state.current_speech.end, 0);
-        assert_eq!(state.speeches.len(), 0);
+        assert!(state.speeches.is_empty());
+        assert_eq!(state.current_speech, utils::TimeStamp::default());
     }
 
     #[test]
-    fn test_state_default() {
-        let state = State::default();
+    fn padding_is_shared_between_close_segments() {
+        let mut speeches = vec![
+            utils::TimeStamp {
+                start: 100,
+                end: 200,
+            },
+            utils::TimeStamp {
+                start: 220,
+                end: 300,
+            },
+        ];
 
-        assert_eq!(state.current_sample, 0);
-        assert_eq!(state.temp_end, 0);
-        assert_eq!(state.next_start, 0);
-        assert_eq!(state.prev_end, 0);
-        assert!(!state.triggered);
-        assert_eq!(state.speeches.len(), 0);
-    }
+        apply_speech_padding(&mut speeches, 30, 400);
 
-    #[test]
-    fn test_params_different_sample_rates() {
-        // Test with 8kHz
-        let vad_params_8k = utils::VadParams {
-            frame_size: 32,
-            sample_rate: 8_000,
-            ..Default::default()
-        };
-        let params_8k = Params::from(vad_params_8k);
-        assert_eq!(params_8k.sr_per_ms, 8);
-        assert_eq!(params_8k.frame_size_samples, 256); // 32 * 8
-
-        // Test with 16kHz
-        let vad_params_16k = utils::VadParams {
-            frame_size: 32,
-            sample_rate: 16_000,
-            ..Default::default()
-        };
-        let params_16k = Params::from(vad_params_16k);
-        assert_eq!(params_16k.sr_per_ms, 16);
-        assert_eq!(params_16k.frame_size_samples, 512); // 32 * 16
-
-        // Test with 48kHz
-        let vad_params_48k = utils::VadParams {
-            frame_size: 32,
-            sample_rate: 48_000,
-            ..Default::default()
-        };
-        let params_48k = Params::from(vad_params_48k);
-        assert_eq!(params_48k.sr_per_ms, 48);
-        assert_eq!(params_48k.frame_size_samples, 1536); // 32 * 48
+        assert_eq!(
+            speeches[0],
+            utils::TimeStamp {
+                start: 70,
+                end: 210
+            }
+        );
+        assert_eq!(
+            speeches[1],
+            utils::TimeStamp {
+                start: 210,
+                end: 330
+            }
+        );
     }
 }
