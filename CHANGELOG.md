@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TEN VAD support through ONNX Runtime, including its reference feature frontend, recurrent state, documentation, and revision-pinned model integration tests.
 - NVIDIA Frame-VAD MarbleNet support for FP32 models through Candle and ONNX Runtime and INT8 models through ONNX Runtime, including a NeMo-compatible frontend and revision-pinned integration tests.
 
+### Changed
+
+- Grouped VAD core, model backends, audio utilities, asset management, Python bindings, and CLI code into domain-focused modules while preserving the existing public module paths.
+- Reworked the CLI to use the public `Detector` API instead of maintaining a separate model/runtime dispatch implementation.
+
 ## [0.6.0] - 2026-09-16
 
 ### Added

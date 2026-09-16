@@ -22,63 +22,51 @@
 //! # }
 //! ```
 
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-mod detector;
 #[cfg(feature = "download")]
-pub mod download;
-#[cfg(feature = "python")]
-mod python;
-pub mod utils;
-pub mod vad_iter;
-
-#[cfg(feature = "candle")]
-pub mod marblenet;
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-pub mod marblenet_frontend;
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-pub mod marblenet_iter;
-#[cfg(feature = "onnxruntime")]
-pub mod marblenet_ort;
-
-#[cfg(feature = "candle")]
-pub mod pulsevad;
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-pub mod pulsevad_frontend;
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-pub mod pulsevad_iter;
-#[cfg(feature = "onnxruntime")]
-pub mod pulsevad_ort;
-
-#[cfg(feature = "candle")]
-pub mod silero_v5;
-#[cfg(feature = "onnxruntime")]
-pub mod silero_v5_ort;
-
-#[cfg(feature = "onnxruntime")]
-pub mod fsmn_vad_frontend;
-#[cfg(feature = "onnxruntime")]
-pub mod fsmn_vad_iter;
-#[cfg(feature = "onnxruntime")]
-pub mod fsmn_vad_ort;
-#[cfg(feature = "onnxruntime")]
-pub mod pyannote_vad_iter;
-#[cfg(feature = "onnxruntime")]
-pub mod pyannote_vad_ort;
-#[cfg(feature = "onnxruntime")]
-pub mod ten_vad_ort;
-
+pub mod assets;
 #[cfg(feature = "cli")]
 pub mod audio;
+#[cfg(feature = "python")]
+mod bindings;
+pub mod models;
+pub mod vad;
+
+// Compatibility aliases for the pre-0.7 flat module layout.
+#[cfg(feature = "download")]
+pub use assets as download;
 #[cfg(feature = "cli")]
-pub mod opus;
-#[cfg(feature = "cli")]
-pub mod resampler;
+pub use audio::{opus, resampler};
+#[cfg(feature = "onnxruntime")]
+pub use models::fsmn::{
+    frontend as fsmn_vad_frontend, iterator as fsmn_vad_iter, onnx as fsmn_vad_ort,
+};
+#[cfg(feature = "candle")]
+pub use models::marblenet::candle as marblenet;
+#[cfg(feature = "onnxruntime")]
+pub use models::marblenet::onnx as marblenet_ort;
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
+pub use models::marblenet::{frontend as marblenet_frontend, iterator as marblenet_iter};
+#[cfg(feature = "candle")]
+pub use models::pulsevad::candle as pulsevad;
+#[cfg(feature = "onnxruntime")]
+pub use models::pulsevad::onnx as pulsevad_ort;
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
+pub use models::pulsevad::{frontend as pulsevad_frontend, iterator as pulsevad_iter};
+#[cfg(feature = "onnxruntime")]
+pub use models::pyannote::{iterator as pyannote_vad_iter, onnx as pyannote_vad_ort};
+#[cfg(feature = "candle")]
+pub use models::silero::candle as silero_v5;
+#[cfg(feature = "onnxruntime")]
+pub use models::silero::onnx as silero_v5_ort;
+#[cfg(feature = "onnxruntime")]
+pub use models::ten::onnx as ten_vad_ort;
+pub use vad::{config as utils, iterator as vad_iter};
 
 pub use anyhow::{Error, Result};
-#[cfg(any(feature = "candle", feature = "onnxruntime"))]
-pub use detector::{Detector, DetectorBuilder, Model, Runtime};
 pub use utils::{TimeStamp, VadParams, VAD_SAMPLE_RATE};
 pub use utils::{TimeStamp as SpeechSegment, VAD_SAMPLE_RATE as SAMPLE_RATE};
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
+pub use vad::detector::{Detector, DetectorBuilder, Model, Runtime};
 pub use vad_iter::{VadIter, VadModel};
 
 #[cfg(feature = "candle")]
@@ -87,4 +75,4 @@ pub use candle_core;
 pub use ort;
 
 #[cfg(feature = "onnxruntime")]
-pub use detector::init_onnx_runtime;
+pub use vad::detector::init_onnx_runtime;

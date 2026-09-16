@@ -4,29 +4,14 @@
 
 | Path | Responsibility |
 | --- | --- |
-| `src/lib.rs` | public library surface and feature-gated backend modules |
-| `src/detector.rs` | model-independent detector builder and inference API |
-| `src/download.rs` | pinned model/runtime registry, SHA-256 verification, extraction, and caching |
-| `src/python.rs` | optional PyO3 classes, functions, buffer conversion, and error mapping |
-| `src/main.rs` | optional CLI, runtime selection, folder processing, and output orchestration |
-| `src/audio.rs` | audio probing, decoding, mono conversion, and input resampling |
-| `src/vad_iter.rs` | shared Silero segmentation state machine |
-| `src/silero_v5.rs` | Candle implementation of Silero VAD v5 |
-| `src/silero_v5_ort.rs` | ONNX Runtime implementation of Silero VAD v5 |
-| `src/pulsevad_frontend.rs` | PulseVAD pre-emphasis and normalized log-mel frontend |
-| `src/pulsevad.rs` | Candle implementation of PulseVAD |
-| `src/pulsevad_ort.rs` | ONNX Runtime implementation of PulseVAD |
-| `src/pulsevad_iter.rs` | PulseVAD overlapping-window segmentation |
-| `src/pyannote_vad_ort.rs` | ONNX Runtime PyAnnote inference |
-| `src/pyannote_vad_iter.rs` | PyAnnote logits-to-segments processing |
-| `src/ten_vad_ort.rs` | ONNX Runtime TEN VAD adapter |
-| `src/marblenet_frontend.rs` | NeMo-compatible MarbleNet log-mel frontend |
-| `src/marblenet.rs` | Candle implementation of MarbleNet |
-| `src/marblenet_ort.rs` | ONNX Runtime implementation of MarbleNet |
-| `src/marblenet_iter.rs` | MarbleNet frame probabilities to segments |
-| `src/resampler.rs` | sample-rate conversion |
-| `src/opus.rs` | Ogg Opus encoding |
-| `src/utils.rs` | shared VAD configuration and timestamps |
+| `src/lib.rs` | stable public library surface and compatibility re-exports |
+| `src/vad/` | model-independent detector, configuration, timestamps, and shared segmentation state machine |
+| `src/models/` | one submodule per model family, with runtime backends, frontends, and iterators grouped together |
+| `src/assets/` | pinned model/runtime registry, SHA-256 verification, extraction, and caching |
+| `src/audio/` | audio decoding, mono conversion, resampling, and Ogg Opus encoding |
+| `src/bindings/` | optional foreign-language bindings, currently PyO3 |
+| `src/cli/` | CLI arguments, runtime orchestration, folder processing, and output writing |
+| `src/main.rs` | minimal CLI entry point |
 | `test-audios/` | small fixtures for local testing |
 
 ## Processing flow
@@ -92,7 +77,7 @@ The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, FunASR 
 
 - VAD always runs on mono, 16 kHz samples. `--sample-rate` applies to final output.
 - Model state is reset for every input.
-- `VadModel` in `src/vad_iter.rs` is the common probability-inference boundary used by the Silero, PulseVAD, and TEN VAD backends.
+- `VadModel` in `src/vad/iterator.rs` is the common probability-inference boundary used by the Silero, PulseVAD, and TEN VAD backends.
 - PyAnnote, FSMN-VAD, and MarbleNet use dedicated iterators for their frame-level outputs and specialized frontends.
 - Errors at file, decoder, model, resampler, and writer boundaries should include enough context to identify the failing input.
 - Production code should propagate recoverable errors instead of panicking.
