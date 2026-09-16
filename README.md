@@ -1,9 +1,7 @@
 # extract-speech
 
 [![Test Rust](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml)
-[![Build Linux](https://github.com/RustedBytes/extract-speech/actions/workflows/build-linux.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build-linux.yml)
-[![Build macOS](https://github.com/RustedBytes/extract-speech/actions/workflows/build-macos.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build-macos.yml)
-[![Build Windows](https://github.com/RustedBytes/extract-speech/actions/workflows/build-win.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build-win.yml)
+[![Build](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml)
 
 `extract-speech` is a Rust command-line tool that detects speech in audio and writes the detected regions as individual clips or one concatenated file.
 
