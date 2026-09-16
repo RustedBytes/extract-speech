@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-16
+
 ### Added
 
 - GitHub Release wheels for CPython 3.9–3.14 on manylinux x86-64, macOS ARM64, and Windows x86-64, with uv-based installation smoke tests.
@@ -129,7 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/RustedBytes/extract-speech/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/RustedBytes/extract-speech/compare/v0.5.4...v0.6.0
 [0.5.4]: https://github.com/RustedBytes/extract-speech/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/RustedBytes/extract-speech/compare/v0.5.2...v0.5.3

@@ -174,7 +174,7 @@ See the [development guide](docs/development.md) for the code layout and project
   month = sep,
   title = {{extract-speech: Extract speech from audio files using Voice Activity Detection models}},
   url = {https://github.com/RustedBytes/extract-speech},
-  version = {0.6.0},
+  version = {0.7.0},
   year = {2026}
 }
 ```
