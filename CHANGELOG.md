@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-16
+
 ### Changed
 
 - Route model diagnostics through the `log` facade and use logger level filters instead of per-model debug switches while preserving the existing compatibility parameters.
@@ -141,7 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/RustedBytes/extract-speech/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/RustedBytes/extract-speech/compare/v0.5.4...v0.6.0
 [0.5.4]: https://github.com/RustedBytes/extract-speech/compare/v0.5.3...v0.5.4

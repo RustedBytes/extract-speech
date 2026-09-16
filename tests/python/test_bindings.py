@@ -76,7 +76,7 @@ class PythonBindingsTest(unittest.TestCase):
     def test_module_metadata(self) -> None:
         self.assertEqual(extract_speech.SAMPLE_RATE, 16_000)
         self.assertEqual(extract_speech.Detector.SAMPLE_RATE, 16_000)
-        self.assertEqual(extract_speech.__version__, "0.7.0")
+        self.assertEqual(extract_speech.__version__, "0.7.1")
         self.assertEqual(self.detector.model, "silero")
         self.assertEqual(self.detector.runtime, "candle")
 
