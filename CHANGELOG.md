@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Make the manylinux wheel build compatible with the container's older curl and run Maturin Action on Node.js 24.
+- Ignore tag-dependent changelog links during link checks so release preparation does not fail before tags exist.
+
 ## [0.7.0] - 2026-09-16
 
 ### Added

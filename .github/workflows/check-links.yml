@@ -7,6 +7,7 @@ on:
       - dev
     paths:
       - '**/*.md'
+      - '.lycheeignore'
       - '.github/workflows/check-links.yml'
   pull_request:
     branches:
@@ -14,6 +15,7 @@ on:
       - dev
     paths:
       - '**/*.md'
+      - '.lycheeignore'
       - '.github/workflows/check-links.yml'
   schedule:
     # Run weekly on Monday at 00:00 UTC

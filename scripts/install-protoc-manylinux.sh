@@ -9,7 +9,8 @@ temporary_directory="$(mktemp -d)"
 trap 'rm -rf -- "$temporary_directory"' EXIT
 
 archive_path="$temporary_directory/protoc.zip"
-curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+# The manylinux_2_28 image ships an older curl without --retry-all-errors.
+curl --fail --location --retry 3 --silent --show-error \
     "$PROTOC_URL" --output "$archive_path"
 echo "$PROTOC_SHA256  $archive_path" | sha256sum --check --status
 unzip -q "$archive_path" -d /usr/local
