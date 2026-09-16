@@ -23,7 +23,7 @@ on:
 jobs:
   test:
     name: Test Rust Codebase
-    runs-on: self-hosted
+    runs-on: ubuntu-26.04
     
     permissions:
       contents: read

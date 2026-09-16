@@ -5,7 +5,7 @@ on:
       - '*'
 jobs:
   build-and-release:
-    runs-on: self-hosted
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
