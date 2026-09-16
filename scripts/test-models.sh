@@ -51,6 +51,9 @@ readonly SILERO_MODEL="$CACHE_DIR/silero-vad.onnx"
 readonly PYANNOTE_MODEL="$CACHE_DIR/pyannote-segmentation-3.0.onnx"
 readonly PULSEVAD_MODEL="$CACHE_DIR/pulsevad-2.1k.onnx"
 readonly PULSEVAD_INT8_MODEL="$CACHE_DIR/pulsevad-2.1k-int8.onnx"
+readonly FSMN_MODEL="$CACHE_DIR/model.onnx"
+readonly FSMN_INT8_MODEL="$CACHE_DIR/model_quant.onnx"
+readonly FSMN_CMVN="$CACHE_DIR/vad.mvn"
 readonly ONNXRUNTIME_ARCHIVE="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
 readonly ONNXRUNTIME_DIR="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}"
 readonly ONNXRUNTIME_LIBRARY="$ONNXRUNTIME_DIR/lib/libonnxruntime.so"
@@ -64,6 +67,18 @@ download_file \
     "https://huggingface.co/onnx-community/pyannote-segmentation-3.0/resolve/733a93b6473d019a773298e08cefa686894b1854/onnx/model.onnx" \
     "057ee564753071c0b09b5b611648b50ac188d50846bff5f01e9f7bbf1591ea25" \
     "$PYANNOTE_MODEL"
+download_file \
+    "https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/model.onnx" \
+    "756887ce01695a9bb00dd85ca0f743653de03b18ba54d2e9ef4f4bb9b3edbf9f" \
+    "$FSMN_MODEL"
+download_file \
+    "https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/model_quant.onnx" \
+    "9b28837838fce9685503c63139fadbad35d6c8ed485485dafdbb32e725969660" \
+    "$FSMN_INT8_MODEL"
+download_file \
+    "https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/vad.mvn" \
+    "6820fef9687708c4fc3fab2530179c8fcea6262daa25514380056cd8f6eb1754" \
+    "$FSMN_CMVN"
 
 # PulseVAD has no Hugging Face repository, so use its official pinned release artifacts.
 download_file \
@@ -153,6 +168,8 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "pulsevad-onnxruntime-fp32" "onnxruntime" "pulsevad" "$PULSEVAD_MODEL" "$audio_file"
     run_case "pulsevad-onnxruntime-int8" "onnxruntime" "pulsevad" "$PULSEVAD_INT8_MODEL" "$audio_file"
     run_case "pyannote-onnxruntime" "onnxruntime" "pyannote" "$PYANNOTE_MODEL" "$audio_file"
+    run_case "fsmn-onnxruntime-fp32" "onnxruntime" "fsmn" "$FSMN_MODEL" "$audio_file"
+    run_case "fsmn-onnxruntime-int8" "onnxruntime" "fsmn" "$FSMN_INT8_MODEL" "$audio_file"
 done
 
-echo "All 18 model integration cases passed."
+echo "All 24 model integration cases passed."

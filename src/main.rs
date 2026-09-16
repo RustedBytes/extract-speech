@@ -12,6 +12,9 @@ use rayon::prelude::*;
 use serde::Serialize;
 
 mod audio;
+mod fsmn_vad_frontend;
+mod fsmn_vad_iter;
+mod fsmn_vad_ort;
 mod opus;
 mod pulsevad;
 mod pulsevad_frontend;
@@ -64,6 +67,8 @@ enum VadModel {
     Pyannote,
     #[value(name = "pulsevad", alias = "pulse-vad")]
     PulseVad,
+    #[value(name = "fsmn", alias = "fsmn-vad")]
+    Fsmn,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
@@ -320,6 +325,9 @@ fn process_single_file(
                 VadModel::Pyannote => Err(anyhow::anyhow!(
                     "PyAnnote model is only supported with ONNX Runtime. Use --runtime onnxruntime"
                 )),
+                VadModel::Fsmn => Err(anyhow::anyhow!(
+                    "FSMN-VAD is only supported with ONNX Runtime. Use --runtime onnxruntime"
+                )),
                 VadModel::PulseVad => {
                     let start = std::time::Instant::now();
                     let pulsevad =
@@ -405,6 +413,28 @@ fn process_single_file(
 
                     let start = std::time::Instant::now();
                     let mut vad_iterator = pulsevad_iter::PulseVadIter::new(pulsevad, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
+                VadModel::Fsmn => {
+                    let start = std::time::Instant::now();
+                    let fsmn = fsmn_vad_ort::FsmnVad::new(
+                        execution_providers,
+                        args.model_path.clone(),
+                        args.debug,
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator = fsmn_vad_iter::FsmnVadIter::new(fsmn, vad_params);
                     let speeches_result = vad_iterator.process(&process_samples)?;
                     let compute_time = start.elapsed();
                     info!("Inference time: {:?}", compute_time);
@@ -508,6 +538,9 @@ fn process_folder(
                         }
                         VadModel::Pyannote => Err(anyhow::anyhow!(
                             "PyAnnote model is only supported with ONNX Runtime"
+                        )),
+                        VadModel::Fsmn => Err(anyhow::anyhow!(
+                            "FSMN-VAD is only supported with ONNX Runtime"
                         )),
                         VadModel::PulseVad => {
                             let pulsevad = pulsevad::PulseVad::new(
@@ -638,6 +671,42 @@ fn process_folder(
                             let start = std::time::Instant::now();
                             let mut vad_iterator =
                                 pulsevad_iter::PulseVadIter::new(pulsevad, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                        VadModel::Fsmn => {
+                            let fsmn = fsmn_vad_ort::FsmnVad::new(
+                                execution_providers.clone(),
+                                args.model_path.clone(),
+                                args.debug,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                fsmn_vad_iter::FsmnVadIter::new(fsmn, vad_params.clone());
                             let speeches_result = vad_iterator.process(&process_samples)?;
                             let compute_time = start.elapsed();
 
@@ -987,6 +1056,22 @@ mod tests {
 
         assert_eq!(args.vad_model, VadModel::PulseVad);
         assert_eq!(make_vad_params(&args).min_speech_duration_ms, 100);
+    }
+
+    #[test]
+    fn fsmn_is_an_accepted_model_name() {
+        let args = Args::try_parse_from([
+            "extract-speech",
+            "--vad-model",
+            "fsmn-vad",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ])
+        .unwrap();
+
+        assert_eq!(args.vad_model, VadModel::Fsmn);
     }
 
     #[test]

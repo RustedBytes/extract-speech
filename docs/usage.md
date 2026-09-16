@@ -152,7 +152,7 @@ RUST_LOG=debug extract-speech \
 | --- | --- | --- |
 | `--model-path <PATH>` | ONNX model path; always required | — |
 | `--runtime <RUNTIME>` | `candle` or `onnxruntime` | `candle` |
-| `--vad-model <MODEL>` | `silero`, `pulsevad`, or `pyannote` | `silero` |
+| `--vad-model <MODEL>` | `silero`, `pulsevad`, `pyannote`, or `fsmn` | `silero` |
 | `--dylib-path <PATH>` | ONNX Runtime dynamic library; required for `onnxruntime` | — |
 | `--process-audio <PATH>` | Single audio file used for VAD | — |
 | `--process-folder <PATH>` | Directory of audio files used for VAD | — |

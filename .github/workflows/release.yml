@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build release (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: read
+
+    env:
+      LIBOPUS_STATIC: "1"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: target/x86_64-unknown-linux-gnu/release/extract-speech
+            asset: extract-speech_x86_64_linux
+          - name: macOS aarch64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            binary: target/aarch64-apple-darwin/release/extract-speech
+            asset: extract-speech_aarch64_apple_darwin
+          - name: Windows x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: target/x86_64-pc-windows-msvc/release/extract-speech.exe
+            asset: extract-speech_x86_64_msvc_windows.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "36.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 'latest'
+
+      - name: Install LLD
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y lld
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Build on Linux
+        if: runner.os == 'Linux'
+        run: cargo build --target "${{ matrix.target }}" --release
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
+          RUSTFLAGS: -Clink-arg=-fuse-ld=lld -Ctarget-cpu=native
+
+      - name: Build on macOS or Windows
+        if: runner.os != 'Linux'
+        run: cargo build --target "${{ matrix.target }}" --release
+
+      - name: Check Linux binary
+        if: runner.os == 'Linux'
+        run: readelf -p .comment "${{ matrix.binary }}"
+
+      - name: Package Unix binary
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp "${{ matrix.binary }}" "dist/${{ matrix.asset }}"
+
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist
+          Copy-Item "${{ matrix.binary }}" "dist/${{ matrix.asset }}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: extract-speech_*
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -67,13 +67,14 @@ just test-models
 # or: ./scripts/test-models.sh
 ```
 
-The suite downloads checksum-verified, revision-pinned Silero and PyAnnote ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
+The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, and FunASR FSMN-VAD ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
 
 ## Design notes
 
 - VAD always runs on mono, 16 kHz samples. `--sample-rate` applies to final output.
 - Model state is reset for every input.
 - `VadModel` in `src/vad_iter.rs` is the common probability-inference boundary used by the Silero and PulseVAD backends.
+- PyAnnote and FSMN-VAD use dedicated iterators for their frame-level outputs and specialized frontends.
 - Errors at file, decoder, model, resampler, and writer boundaries should include enough context to identify the failing input.
 - Production code should propagate recoverable errors instead of panicking.
 - Behavioral fixes should include focused unit or regression tests.
@@ -92,4 +93,4 @@ Create an optimized binary with:
 cargo build --release
 ```
 
-The release profile enables optimization, link-time optimization, symbol stripping, and no debug information. Tagged pushes trigger the release workflow; platform-specific release workflows can also be run manually in GitHub Actions.
+The release profile enables optimization, link-time optimization, symbol stripping, and no debug information. The matrix-based release workflow builds Linux x86-64, macOS aarch64, and Windows x86-64 artifacts on tagged pushes or manual runs. Tagged pushes also publish all three binaries to a GitHub Release.

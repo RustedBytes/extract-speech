@@ -53,6 +53,25 @@ impl<M: VadModel> VadIter<M> {
     }
 }
 
+pub(crate) fn segment_probabilities(
+    probabilities: &[f32],
+    total_samples: usize,
+    params: utils::VadParams,
+) -> Vec<utils::TimeStamp> {
+    let params = Params::from(params);
+    let mut state = State::default();
+    for &probability in probabilities {
+        state.update(&params, probability);
+    }
+    state.finish(total_samples, &params);
+    apply_speech_padding(
+        &mut state.speeches,
+        params.speech_pad_samples,
+        total_samples,
+    );
+    state.speeches
+}
+
 #[derive(Debug)]
 struct Params {
     threshold: f32,

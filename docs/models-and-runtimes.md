@@ -10,6 +10,8 @@
 | PulseVAD FP32 | Supported | Supported |
 | PulseVAD INT8 QDQ | Not supported | Supported |
 | PyAnnote segmentation | Not supported | Supported |
+| FunASR FSMN-VAD FP32 | Not supported | Supported |
+| FunASR FSMN-VAD INT8 | Not supported | Supported |
 
 The internal VAD sample rate is 16 kHz for every backend.
 
@@ -93,6 +95,33 @@ extract-speech \
 
 The exported model must accept mono audio shaped as `[batch, channel, samples]` and expose a three-dimensional output named `logits` with the shape `[batch, frames, classes]`.
 
+## FunASR FSMN-VAD
+
+[FunASR FSMN-VAD](https://huggingface.co/funasr/fsmn-vad-onnx) is available through ONNX Runtime. Download either model graph together with its CMVN coefficients:
+
+```bash
+mkdir -p models/fsmn-vad
+curl -L \
+  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/main/model.onnx \
+  -o models/fsmn-vad/model.onnx
+curl -L \
+  https://huggingface.co/funasr/fsmn-vad-onnx/resolve/main/vad.mvn \
+  -o models/fsmn-vad/vad.mvn
+```
+
+Run it with:
+
+```bash
+extract-speech \
+  --runtime onnxruntime \
+  --vad-model fsmn \
+  --dylib-path /path/to/libonnxruntime.so \
+  --model-path models/fsmn-vad/model.onnx \
+  --process-audio input.wav
+```
+
+The quantized `model_quant.onnx` file is used in the same way. Keep `vad.mvn` (or the legacy name `am.mvn`) in the same directory as the selected ONNX file. `extract-speech` implements the model's 80-bin Kaldi filterbank, five-frame LFR stacking, CMVN, and recurrent FSMN cache inputs internally.
+
 ## ONNX Runtime
 
 The ONNX Runtime backend loads its dynamic library at startup. Download a package for the target platform from the [ONNX Runtime releases](https://github.com/microsoft/onnxruntime/releases), extract it, and pass the library itself to `--dylib-path`.
@@ -144,7 +173,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ model. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ and FSMN-VAD models. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io
