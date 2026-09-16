@@ -45,6 +45,7 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           version: "36.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2

@@ -69,6 +69,7 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           version: "36.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup CMake
         if: runner.os == 'Windows'
