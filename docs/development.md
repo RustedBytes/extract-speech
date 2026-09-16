@@ -4,7 +4,9 @@
 
 | Path | Responsibility |
 | --- | --- |
-| `src/main.rs` | CLI, runtime selection, folder processing, and output orchestration |
+| `src/lib.rs` | public library surface and feature-gated backend modules |
+| `src/detector.rs` | model-independent detector builder and inference API |
+| `src/main.rs` | optional CLI, runtime selection, folder processing, and output orchestration |
 | `src/audio.rs` | audio probing, decoding, mono conversion, and input resampling |
 | `src/vad_iter.rs` | shared Silero segmentation state machine |
 | `src/silero_v5.rs` | Candle implementation of Silero VAD v5 |
@@ -43,8 +45,8 @@ Run the same core checks expected in CI before submitting a change:
 ```bash
 cargo fmt -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-cargo build
+cargo test --all-targets --all-features
+cargo build --features cli
 ```
 
 The repository also provides `just` recipes:
@@ -59,7 +61,7 @@ just release
 Use the sample audio fixtures for manual smoke tests. A model file is not stored in the repository, so provide one explicitly:
 
 ```bash
-cargo run -- \
+cargo run --features cli -- \
   --model-path models/silero-vad-v5.onnx \
   --process-audio test-audios/test_16khz.wav \
   --output target/manual-output
@@ -72,7 +74,7 @@ just test-models
 # or: ./scripts/test-models.sh
 ```
 
-The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, FunASR FSMN-VAD, TEN VAD, and MarbleNet ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
+The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, FunASR FSMN-VAD, TEN VAD, and MarbleNet ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It first exercises the public `Detector` API with a real Silero model, then runs every supported CLI model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures and validates each WAV output and metadata file.
 
 ## Design notes
 
@@ -95,7 +97,7 @@ Markdown links are checked automatically by the `check-links.yml` workflow.
 Create an optimized binary with:
 
 ```bash
-cargo build --release
+cargo build --release --features cli
 ```
 
 The release profile enables optimization, link-time optimization, symbol stripping, and no debug information. The matrix-based release workflow builds Linux x86-64, macOS aarch64, and Windows x86-64 artifacts on tagged pushes or manual runs. Tagged pushes also publish all three binaries to a GitHub Release.

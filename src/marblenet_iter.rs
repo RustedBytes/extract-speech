@@ -4,12 +4,14 @@ pub trait MarbleNetModel {
     fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>>;
 }
 
+#[cfg(feature = "candle")]
 impl MarbleNetModel for crate::marblenet::MarbleNet {
     fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>> {
         crate::marblenet::MarbleNet::speech_probabilities(self, waveform)
     }
 }
 
+#[cfg(feature = "onnxruntime")]
 impl MarbleNetModel for crate::marblenet_ort::MarbleNet {
     fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>> {
         crate::marblenet_ort::MarbleNet::speech_probabilities(self, waveform)

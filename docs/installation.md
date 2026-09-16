@@ -29,10 +29,18 @@ Download a `protoc` archive from the [Protocol Buffers releases](https://github.
 
 ## Build from source
 
+After publication, install the optional command-line application from crates.io with:
+
+```bash
+cargo install extract-speech --features cli
+```
+
+To build the repository directly:
+
 ```bash
 git clone https://github.com/RustedBytes/extract-speech.git
 cd extract-speech
-cargo build --release
+cargo build --release --features cli
 ```
 
 The resulting executable is:
@@ -40,14 +48,14 @@ The resulting executable is:
 - `target/release/extract-speech` on Linux and macOS
 - `target/release/extract-speech.exe` on Windows
 
-Use `cargo build` instead when you want a faster development build.
+Use `cargo build --features cli` instead when you want a faster development build. A plain `cargo build` builds the library only.
 
 ### macOS Accelerate
 
 On Apple platforms, the optional Accelerate integration can be enabled with:
 
 ```bash
-cargo build --release --features accelerate-src
+cargo build --release --features "cli,accelerate-src"
 ```
 
 ## Prebuilt releases

@@ -81,6 +81,12 @@ impl MarbleNetFrontend {
     }
 }
 
+impl Default for MarbleNetFrontend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn reflected_index(index: isize, len: usize) -> usize {
     if len <= 1 {
         return 0;

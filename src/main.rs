@@ -6,35 +6,18 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use clap::{Parser, ValueEnum};
+use extract_speech::{
+    fsmn_vad_iter, fsmn_vad_ort, marblenet, marblenet_iter, marblenet_ort, pulsevad, pulsevad_iter,
+    pulsevad_ort, pyannote_vad_iter, pyannote_vad_ort, resampler, silero_v5, silero_v5_ort,
+    ten_vad_ort, utils, vad_iter,
+};
 use log::{debug, info};
 use ort::ep::{CoreML, ExecutionProviderDispatch, TensorRT, CPU, CUDA};
 use rayon::prelude::*;
 use serde::Serialize;
 
-mod audio;
-mod fsmn_vad_frontend;
-mod fsmn_vad_iter;
-mod fsmn_vad_ort;
-mod marblenet;
-mod marblenet_frontend;
-mod marblenet_iter;
-mod marblenet_ort;
-mod opus;
-mod pulsevad;
-mod pulsevad_frontend;
-mod pulsevad_iter;
-mod pulsevad_ort;
-mod pyannote_vad_iter;
-mod pyannote_vad_ort;
-mod resampler;
-mod silero_v5;
-mod silero_v5_ort;
-mod ten_vad_ort;
-pub(crate) mod utils;
-mod vad_iter;
-
-use crate::audio::load_samples_from_audio_file;
-use crate::opus::write_opus;
+use extract_speech::audio::load_samples_from_audio_file;
+use extract_speech::opus::write_opus;
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MIT licensing metadata and license text for crates.io distribution.
+- A reusable Rust library API with a model-independent detector builder, speech-segment inference, feature-gated Candle and ONNX Runtime backends, and library usage documentation.
 - TEN VAD support through ONNX Runtime, including its reference feature frontend, recurrent state, documentation, and revision-pinned model integration tests.
 - NVIDIA Frame-VAD MarbleNet support for FP32 models through Candle and ONNX Runtime and INT8 models through ONNX Runtime, including a NeMo-compatible frontend and revision-pinned integration tests.
 
@@ -22,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dedicated installation, usage, model compatibility, and development documentation.
 
 ### Changed
+
+- Made the command-line application optional behind the `cli` Cargo feature so library consumers do not pull in audio file I/O and CLI dependencies.
 
 - Migrated audio resampling to `fast-audio-resampler` and upgraded the Rust inference, audio, CLI, and serialization dependencies.
 - Consolidated platform builds and releases into matrix-based GitHub Actions workflows for Linux, macOS, and Windows.

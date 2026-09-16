@@ -68,14 +68,14 @@ jobs:
 
       - name: Build on Linux
         if: runner.os == 'Linux'
-        run: cargo build --target "${{ matrix.target }}" --release
+        run: cargo build --target "${{ matrix.target }}" --release --features cli
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           RUSTFLAGS: -Clink-arg=-fuse-ld=lld -Ctarget-cpu=native
 
       - name: Build on macOS or Windows
         if: runner.os != 'Linux'
-        run: cargo build --target "${{ matrix.target }}" --release
+        run: cargo build --target "${{ matrix.target }}" --release --features cli
 
       - name: Check Linux binary
         if: runner.os == 'Linux'

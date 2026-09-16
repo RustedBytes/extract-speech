@@ -53,6 +53,7 @@ impl<M: VadModel> VadIter<M> {
     }
 }
 
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub(crate) fn segment_probabilities(
     probabilities: &[f32],
     total_samples: usize,

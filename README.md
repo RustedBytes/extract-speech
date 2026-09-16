@@ -3,7 +3,7 @@
 [![Test Rust](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml)
 [![Build](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml)
 
-`extract-speech` is a Rust command-line tool that detects speech in audio and writes the detected regions as individual clips or one concatenated file.
+`extract-speech` is a Rust library for running voice activity detection (VAD) models. It accepts normalized mono 16 kHz PCM samples and returns detected speech ranges as sample offsets. An optional command-line application decodes common audio formats and writes the detected regions as clips or one concatenated file.
 
 It supports:
 
@@ -18,16 +18,52 @@ It supports:
 - automatic stereo-to-mono conversion and sample-rate conversion
 - parallel processing of a directory of audio files
 - optional CUDA, TensorRT, and CoreML execution providers
+- a reusable, model-independent Rust inference API
 - JSON metadata containing clip durations and inference time
 
-## Quick start
+## Library quick start
+
+Add the library to your project:
+
+```toml
+[dependencies]
+extract-speech = "0.6"
+```
+
+Load a Silero model through Candle and run inference on normalized mono 16 kHz samples:
+
+```rust,no_run
+use extract_speech::{Detector, Model, Result, Runtime, VadParams};
+
+fn main() -> Result<()> {
+    let mut detector = Detector::builder("models/silero-vad-v5.onnx")
+        .model(Model::Silero)
+        .runtime(Runtime::Candle)
+        .parameters(VadParams {
+            threshold: 0.7,
+            ..VadParams::default()
+        })
+        .build()?;
+
+    let samples = vec![0.0_f32; 16_000];
+    for segment in detector.detect(&samples)? {
+        println!("speech: {}..{} samples", segment.start, segment.end);
+    }
+
+    Ok(())
+}
+```
+
+The same `Detector` can process multiple independent inputs; model state is reset between calls. See the [library guide](docs/library.md) for runtime features, ONNX Runtime initialization, and API details.
+
+## CLI quick start
 
 Install Rust and Protocol Buffers first; see the [installation guide](docs/installation.md) for platform-specific instructions.
 
 ```bash
 git clone https://github.com/RustedBytes/extract-speech.git
 cd extract-speech
-cargo build --release
+cargo build --release --features cli
 
 mkdir -p models
 curl -L \
@@ -56,6 +92,15 @@ Create one file with the detected regions joined together:
 
 The default runtime is Candle, the default detection threshold is `0.7`, and the default output sample rate is 16 kHz. Run `extract-speech --help` for the complete command reference.
 
+## Cargo features
+
+| Feature | Default | Provides |
+| --- | --- | --- |
+| `candle` | Yes | Silero, PulseVAD, and MarbleNet inference through Candle |
+| `onnxruntime` | Yes | All supported models through dynamically loaded ONNX Runtime |
+| `cli` | No | The `extract-speech` executable and audio file I/O |
+| `accelerate-src` | No | Apple Accelerate integration for Candle builds |
+
 ## Runtimes
 
 | Runtime | Models | External runtime library | Acceleration |
@@ -68,6 +113,7 @@ For ONNX Runtime setup and compatible model requirements, see [Models and runtim
 ## Documentation
 
 - [Changelog](CHANGELOG.md) — notable changes by release
+- [Library](docs/library.md) — Rust API, Cargo features, and inference examples
 - [Installation](docs/installation.md) — prerequisites, builds, and releases
 - [Usage](docs/usage.md) — inputs, outputs, CLI options, metadata, and examples
 - [Models and runtimes](docs/models-and-runtimes.md) — model compatibility and hardware acceleration
@@ -78,8 +124,8 @@ For ONNX Runtime setup and compatible model requirements, see [Models and runtim
 ```bash
 cargo fmt -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-cargo build
+cargo test --all-targets --all-features
+cargo build --features cli
 ```
 
 See the [development guide](docs/development.md) for the code layout and project conventions.
@@ -96,3 +142,7 @@ See the [development guide](docs/development.md) for the code layout and project
   year = {2026}
 }
 ```
+
+## License
+
+This project is available under the [MIT License](LICENSE).

@@ -2,29 +2,87 @@
 name = "extract-speech"
 version = "0.6.0"
 edition = "2021"
+authors = ["Yehor Smoliakov"]
+description = "Voice activity detection inference for Silero, PulseVAD, PyAnnote, FSMN, TEN VAD, and MarbleNet"
+repository = "https://github.com/RustedBytes/extract-speech"
+homepage = "https://github.com/RustedBytes/extract-speech"
+documentation = "https://docs.rs/extract-speech"
+readme = "README.md"
+license = "MIT"
+keywords = ["audio", "speech", "vad", "onnx", "inference"]
+categories = ["multimedia::audio"]
+include = [
+    ".cargo/config.toml",
+    "CHANGELOG.md",
+    "Cargo.lock",
+    "Cargo.toml",
+    "LICENSE",
+    "README.md",
+    "docs/**",
+    "examples/**",
+    "src/**",
+]
+
+[features]
+default = ["candle", "onnxruntime"]
+candle = ["dep:candle-core", "dep:candle-onnx", "dep:rustfft"]
+onnxruntime = [
+    "dep:kaldi-native-fbank",
+    "dep:ndarray",
+    "dep:ort",
+    "dep:rustfft",
+    "dep:ten-vad-rs",
+]
+cli = [
+    "candle",
+    "onnxruntime",
+    "dep:byteorder",
+    "dep:chrono",
+    "dep:clap",
+    "dep:fast-audio-resampler",
+    "dep:hound",
+    "dep:ogg",
+    "dep:opus",
+    "dep:rayon",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:symphonia",
+    "dep:tracing-subscriber",
+]
+accelerate-src = ["candle", "dep:accelerate-src"]
+
+[[bin]]
+name = "extract-speech"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[[example]]
+name = "library-inference"
+path = "examples/library-inference.rs"
+required-features = ["cli"]
 
 [dependencies]
-clap = { version = "4.6.7", features = ["derive"] }
-symphonia = { version = "0.6.1", features = ["all-formats", "all-codecs", "opt-simd"] }
-candle-core = { version = "0.11.0" }
-candle-onnx = { version = "0.11.0" }
-ort = { version = "2.0.0-rc.13", features = ["load-dynamic", "ndarray", "cuda", "tensorrt", "coreml"] }
-ndarray = "0.17.2"
-byteorder = "1.5.0"
-ogg = "0.9.2"
-opus = "0.4.0"
-hound = "3.5.1"
-fast-audio-resampler = "0.4.0"
 anyhow = "1.0"
-chrono = "0.4"
-rayon = "1.12"
-rustfft = "6.4.1"
-kaldi-native-fbank = "0.1.0"
-ten-vad-rs = "0.1.7"
 log = "0.4.34"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+byteorder = { version = "1.5.0", optional = true }
+candle-core = { version = "0.11.0", optional = true }
+candle-onnx = { version = "0.11.0", optional = true }
+chrono = { version = "0.4", optional = true }
+clap = { version = "4.6.7", features = ["derive"], optional = true }
+fast-audio-resampler = { version = "0.4.0", optional = true }
+hound = { version = "3.5.1", optional = true }
+kaldi-native-fbank = { version = "0.1.0", optional = true }
+ndarray = { version = "0.17.2", optional = true }
+ogg = { version = "0.9.2", optional = true }
+opus = { version = "0.4.0", optional = true }
+ort = { version = "2.0.0-rc.13", features = ["load-dynamic", "ndarray", "cuda", "tensorrt", "coreml"], optional = true }
+rayon = { version = "1.12", optional = true }
+rustfft = { version = "6.4.1", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+symphonia = { version = "0.6.1", features = ["all-formats", "all-codecs", "opt-simd"], optional = true }
+ten-vad-rs = { version = "0.1.7", optional = true }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"], optional = true }
 
 [target.'cfg(target_vendor = "apple")'.dependencies]
 accelerate-src = { version = "0.3.2", optional = true, default-features = false }

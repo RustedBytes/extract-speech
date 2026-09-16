@@ -84,7 +84,7 @@ jobs:
 
       - name: Build on Linux
         if: runner.os == 'Linux'
-        run: cargo build
+        run: cargo build --features cli
         env:
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: clang
           RUSTFLAGS: -Zthreads=${{ steps.cpu-cores.outputs.count }} -Clink-arg=--ld-path=/usr/local/bin/wild
@@ -95,10 +95,10 @@ jobs:
 
       - name: Build on macOS
         if: runner.os == 'macOS'
-        run: cargo build --features "accelerate-src"
+        run: cargo build --features "cli,accelerate-src"
 
       - name: Build on Windows
         if: runner.os == 'Windows'
-        run: cargo build
+        run: cargo build --features cli
         env:
           LIBOPUS_STATIC: "1"

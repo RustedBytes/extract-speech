@@ -89,6 +89,12 @@ impl PulseVadFrontend {
     }
 }
 
+impl Default for PulseVadFrontend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 fn normalize(values: &mut [f32]) {
     let mean = values.iter().sum::<f32>() / values.len() as f32;
     let variance = values

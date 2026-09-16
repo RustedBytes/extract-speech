@@ -114,8 +114,10 @@ if [[ ! -e "$ONNXRUNTIME_LIBRARY" ]]; then
     tar -xzf "$ONNXRUNTIME_ARCHIVE" -C "$CACHE_DIR"
 fi
 
-cargo build --locked --manifest-path "$REPO_DIR/Cargo.toml"
+cargo build --locked --features cli --manifest-path "$REPO_DIR/Cargo.toml"
+cargo build --locked --features cli --example library-inference --manifest-path "$REPO_DIR/Cargo.toml"
 readonly BINARY="$REPO_DIR/target/debug/extract-speech"
+readonly LIBRARY_EXAMPLE="$REPO_DIR/target/debug/examples/library-inference"
 
 validate_result() {
     local output_path="$1"
@@ -176,6 +178,9 @@ readonly TEST_AUDIO_FILES=(
     "$REPO_DIR/test-audios/test_24khz.wav"
 )
 
+echo "Testing the public library API with Silero and test_16khz"
+"$LIBRARY_EXAMPLE" "$SILERO_MODEL" "$REPO_DIR/test-audios/test_16khz.wav" >/dev/null
+
 for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "silero-candle" "candle" "silero" "$SILERO_MODEL" "$audio_file"
     run_case "silero-onnxruntime" "onnxruntime" "silero" "$SILERO_MODEL" "$audio_file"
@@ -191,4 +196,4 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "All 36 model integration cases passed."
+echo "The library API smoke test and all 36 CLI model integration cases passed."

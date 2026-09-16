@@ -56,13 +56,22 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --all-targets --all-features --verbose
 
-      - name: Build
-        run: cargo build --verbose
+      - name: Check library feature combinations
+        run: |
+          cargo check --lib --no-default-features
+          cargo check --lib --no-default-features --features candle
+          cargo check --lib --no-default-features --features onnxruntime
+
+      - name: Verify crates.io package
+        run: cargo package --locked
+
+      - name: Build CLI
+        run: cargo build --features cli --verbose
 
       - name: Cache model test dependencies
         uses: actions/cache@v6
