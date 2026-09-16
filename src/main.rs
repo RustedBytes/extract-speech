@@ -13,6 +13,10 @@ use serde::Serialize;
 
 mod audio;
 mod opus;
+mod pulsevad;
+mod pulsevad_frontend;
+mod pulsevad_iter;
+mod pulsevad_ort;
 mod pyannote_vad_iter;
 mod pyannote_vad_ort;
 mod resampler;
@@ -58,6 +62,8 @@ enum Runtime {
 enum VadModel {
     Silero,
     Pyannote,
+    #[value(name = "pulsevad", alias = "pulse-vad")]
+    PulseVad,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
@@ -219,6 +225,20 @@ fn collect_audio_files(folder_path: &std::path::Path) -> Result<Vec<PathBuf>> {
     Ok(audio_files)
 }
 
+fn make_vad_params(args: &Args) -> utils::VadParams {
+    utils::VadParams {
+        sample_rate: utils::VAD_SAMPLE_RATE,
+        threshold: args.threshold,
+        min_speech_duration_ms: if args.vad_model == VadModel::PulseVad {
+            100
+        } else {
+            utils::VadParams::default().min_speech_duration_ms
+        },
+        debug: args.debug,
+        ..Default::default()
+    }
+}
+
 fn process_single_file(
     args: Args,
     process_audio_path: PathBuf,
@@ -255,12 +275,7 @@ fn process_single_file(
     info!("Retrieved audio files in: {:?}", start.elapsed());
 
     // Create the VAD params
-    let vad_params = utils::VadParams {
-        sample_rate: utils::VAD_SAMPLE_RATE,
-        threshold: args.threshold,
-        debug: args.debug,
-        ..Default::default()
-    };
+    let vad_params = make_vad_params(&args);
 
     match args.runtime {
         Runtime::Candle => {
@@ -305,6 +320,25 @@ fn process_single_file(
                 VadModel::Pyannote => Err(anyhow::anyhow!(
                     "PyAnnote model is only supported with ONNX Runtime. Use --runtime onnxruntime"
                 )),
+                VadModel::PulseVad => {
+                    let start = std::time::Instant::now();
+                    let pulsevad =
+                        pulsevad::PulseVad::new(args.model_path.clone(), device, args.debug)?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator = pulsevad_iter::PulseVadIter::new(pulsevad, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
             }
         }
         Runtime::Onnxruntime => {
@@ -360,6 +394,28 @@ fn process_single_file(
                         compute_time.as_secs_f64(),
                     )
                 }
+                VadModel::PulseVad => {
+                    let start = std::time::Instant::now();
+                    let pulsevad = pulsevad_ort::PulseVad::new(
+                        execution_providers,
+                        args.model_path.clone(),
+                        args.debug,
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator = pulsevad_iter::PulseVadIter::new(pulsevad, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
             }
         }
     }
@@ -381,12 +437,7 @@ fn process_folder(
     std::fs::create_dir_all(&output_base)?;
 
     // Create the VAD params
-    let vad_params = utils::VadParams {
-        sample_rate: utils::VAD_SAMPLE_RATE,
-        threshold: args.threshold,
-        debug: args.debug,
-        ..Default::default()
-    };
+    let vad_params = make_vad_params(&args);
 
     // Process files in parallel using rayon
     let results: Vec<Result<()>> = audio_files
@@ -458,6 +509,42 @@ fn process_folder(
                         VadModel::Pyannote => Err(anyhow::anyhow!(
                             "PyAnnote model is only supported with ONNX Runtime"
                         )),
+                        VadModel::PulseVad => {
+                            let pulsevad = pulsevad::PulseVad::new(
+                                args.model_path.clone(),
+                                device,
+                                args.debug,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                pulsevad_iter::PulseVadIter::new(pulsevad, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
                     }
                 }
                 Runtime::Onnxruntime => {
@@ -518,6 +605,42 @@ fn process_folder(
                             let compute_time = start.elapsed();
 
                             // Create args for this file
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                        VadModel::PulseVad => {
+                            let pulsevad = pulsevad_ort::PulseVad::new(
+                                execution_providers.clone(),
+                                args.model_path.clone(),
+                                args.debug,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                pulsevad_iter::PulseVadIter::new(pulsevad, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
                             let mut file_args = args.clone();
                             file_args.output = file_output_path.clone();
                             file_args.metadata = args.metadata.as_ref().map(|m| {
@@ -847,6 +970,23 @@ mod tests {
         .unwrap();
 
         assert_eq!(args.output, PathBuf::from("output"));
+    }
+
+    #[test]
+    fn pulsevad_is_an_accepted_model_name() {
+        let args = Args::try_parse_from([
+            "extract-speech",
+            "--vad-model",
+            "pulsevad",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ])
+        .unwrap();
+
+        assert_eq!(args.vad_model, VadModel::PulseVad);
+        assert_eq!(make_vad_params(&args).min_speech_duration_ms, 100);
     }
 
     #[test]

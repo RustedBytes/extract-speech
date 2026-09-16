@@ -9,6 +9,10 @@
 | `src/vad_iter.rs` | shared Silero segmentation state machine |
 | `src/silero_v5.rs` | Candle implementation of Silero VAD v5 |
 | `src/silero_v5_ort.rs` | ONNX Runtime implementation of Silero VAD v5 |
+| `src/pulsevad_frontend.rs` | PulseVAD pre-emphasis and normalized log-mel frontend |
+| `src/pulsevad.rs` | Candle implementation of PulseVAD |
+| `src/pulsevad_ort.rs` | ONNX Runtime implementation of PulseVAD |
+| `src/pulsevad_iter.rs` | PulseVAD overlapping-window segmentation |
 | `src/pyannote_vad_ort.rs` | ONNX Runtime PyAnnote inference |
 | `src/pyannote_vad_iter.rs` | PyAnnote logits-to-segments processing |
 | `src/resampler.rs` | sample-rate conversion |
@@ -60,7 +64,7 @@ cargo run -- \
 
 - VAD always runs on mono, 16 kHz samples. `--sample-rate` applies to final output.
 - Model state is reset for every input.
-- `VadModel` in `src/vad_iter.rs` is the common boundary between Silero inference backends and segmentation.
+- `VadModel` in `src/vad_iter.rs` is the common probability-inference boundary used by the Silero and PulseVAD backends.
 - Errors at file, decoder, model, resampler, and writer boundaries should include enough context to identify the failing input.
 - Production code should propagate recoverable errors instead of panicking.
 - Behavioral fixes should include focused unit or regression tests.

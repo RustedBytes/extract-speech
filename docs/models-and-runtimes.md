@@ -7,6 +7,8 @@
 | VAD model | Candle | ONNX Runtime |
 | --- | --- | --- |
 | Silero VAD v5 | Supported | Supported |
+| PulseVAD FP32 | Supported | Supported |
+| PulseVAD INT8 QDQ | Not supported | Supported |
 | PyAnnote segmentation | Not supported | Supported |
 
 The internal VAD sample rate is 16 kHz for every backend.
@@ -33,6 +35,48 @@ extract-speech \
 ```
 
 Compatible Silero exports must expose the expected `input`, `state`, and `sr` inputs and the `output` and `stateN` outputs.
+
+## PulseVAD
+
+[PulseVAD](https://github.com/AydinAdnan/PulseVAD) processes 200 ms windows of 16 kHz mono audio. `extract-speech` includes its required pre-emphasis and normalized 64-bin log-mel frontend, and evaluates windows with the reference 100 ms hop.
+
+Download the FP32 model for Candle:
+
+```bash
+mkdir -p models
+curl -L \
+  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/main/pulsevad/data/pulsevad_2.1k.onnx \
+  -o models/pulsevad_2.1k.onnx
+```
+
+Run it with:
+
+```bash
+extract-speech \
+  --runtime candle \
+  --vad-model pulsevad \
+  --model-path models/pulsevad_2.1k.onnx \
+  --threshold 0.5 \
+  --process-audio input.wav
+```
+
+ONNX Runtime can use either the FP32 model or the QDQ-quantized INT8 model. Download and run the smaller INT8 graph with:
+
+```bash
+curl -L \
+  https://raw.githubusercontent.com/AydinAdnan/PulseVAD/main/pulsevad/data/pulsevad_2.1k_int8.onnx \
+  -o models/pulsevad_2.1k_int8.onnx
+
+extract-speech \
+  --runtime onnxruntime \
+  --vad-model pulsevad \
+  --dylib-path /path/to/libonnxruntime.so \
+  --model-path models/pulsevad_2.1k_int8.onnx \
+  --threshold 0.5 \
+  --process-audio input.wav
+```
+
+PulseVAD's reference threshold is `0.5`; pass it explicitly because the CLI-wide default remains `0.7`. Compatible PulseVAD exports must accept an input named `log_mel` shaped as `[batch, 64, 21]` and return two-class logits in an output named `logits`.
 
 ## PyAnnote
 
@@ -100,7 +144,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model`. Inspect its interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ model. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

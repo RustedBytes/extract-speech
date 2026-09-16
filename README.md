@@ -10,6 +10,7 @@
 It supports:
 
 - Silero VAD v5 through Candle or ONNX Runtime
+- PulseVAD through Candle or ONNX Runtime
 - PyAnnote segmentation models through ONNX Runtime
 - WAV, MP3, FLAC, Ogg, Opus, M4A, and AAC input
 - WAV and Ogg Opus output
@@ -58,8 +59,8 @@ The default runtime is Candle, the default detection threshold is `0.7`, and the
 
 | Runtime | Models | External runtime library | Acceleration |
 | --- | --- | --- | --- |
-| Candle | Silero | No | CPU |
-| ONNX Runtime | Silero, PyAnnote | Yes, supplied with `--dylib-path` | CPU, CUDA, TensorRT, CoreML |
+| Candle | Silero, PulseVAD FP32 | No | CPU |
+| ONNX Runtime | Silero, PulseVAD FP32/INT8, PyAnnote | Yes, supplied with `--dylib-path` | CPU, CUDA, TensorRT, CoreML |
 
 For ONNX Runtime setup and compatible model requirements, see [Models and runtimes](docs/models-and-runtimes.md).
 

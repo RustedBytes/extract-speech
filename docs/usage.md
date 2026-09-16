@@ -78,6 +78,8 @@ extract-speech \
   --output clips
 ```
 
+PulseVAD's recommended starting threshold is `0.5`, so specify `--threshold 0.5` when using `--vad-model pulsevad`. See [Models and runtimes](models-and-runtimes.md#pulsevad) for model downloads and runtime compatibility.
+
 ## Use separate detection and source audio
 
 `--source-audio` lets the model detect speech in one file while extracting the matching regions from another. This is useful when detection works better on a denoised copy but output should come from the original recording.
@@ -150,7 +152,7 @@ RUST_LOG=debug extract-speech \
 | --- | --- | --- |
 | `--model-path <PATH>` | ONNX model path; always required | — |
 | `--runtime <RUNTIME>` | `candle` or `onnxruntime` | `candle` |
-| `--vad-model <MODEL>` | `silero` or `pyannote` | `silero` |
+| `--vad-model <MODEL>` | `silero`, `pulsevad`, or `pyannote` | `silero` |
 | `--dylib-path <PATH>` | ONNX Runtime dynamic library; required for `onnxruntime` | — |
 | `--process-audio <PATH>` | Single audio file used for VAD | — |
 | `--process-folder <PATH>` | Directory of audio files used for VAD | — |
