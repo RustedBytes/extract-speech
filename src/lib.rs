@@ -24,6 +24,8 @@
 
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 mod detector;
+#[cfg(feature = "download")]
+pub mod download;
 pub mod utils;
 pub mod vad_iter;
 

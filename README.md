@@ -33,10 +33,14 @@ extract-speech = "0.6"
 Load a Silero model through Candle and run inference on normalized mono 16 kHz samples:
 
 ```rust,no_run
-use extract_speech::{Detector, Model, Result, Runtime, VadParams};
+use extract_speech::{
+    download::{AssetManager, ModelAsset},
+    Detector, Model, Result, Runtime, VadParams,
+};
 
 fn main() -> Result<()> {
-    let mut detector = Detector::builder("models/silero-vad-v5.onnx")
+    let model = AssetManager::default_cache()?.model(ModelAsset::SileroV5)?;
+    let mut detector = Detector::builder(model.model_path())
         .model(Model::Silero)
         .runtime(Runtime::Candle)
         .parameters(VadParams {
@@ -98,6 +102,7 @@ The default runtime is Candle, the default detection threshold is `0.7`, and the
 | --- | --- | --- |
 | `candle` | Yes | Silero, PulseVAD, and MarbleNet inference through Candle |
 | `onnxruntime` | Yes | All supported models through dynamically loaded ONNX Runtime |
+| `download` | Yes | Checksum-verified model bundles, ONNX Runtime downloads, and persistent caching |
 | `cli` | No | The `extract-speech` executable and audio file I/O |
 | `accelerate-src` | No | Apple Accelerate integration for Candle builds |
 

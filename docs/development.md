@@ -6,6 +6,7 @@
 | --- | --- |
 | `src/lib.rs` | public library surface and feature-gated backend modules |
 | `src/detector.rs` | model-independent detector builder and inference API |
+| `src/download.rs` | pinned model/runtime registry, SHA-256 verification, extraction, and caching |
 | `src/main.rs` | optional CLI, runtime selection, folder processing, and output orchestration |
 | `src/audio.rs` | audio probing, decoding, mono conversion, and input resampling |
 | `src/vad_iter.rs` | shared Silero segmentation state machine |

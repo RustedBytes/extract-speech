@@ -18,6 +18,23 @@
 
 The internal VAD sample rate is 16 kHz for every backend.
 
+## Automatic downloads
+
+Library users can download a complete, revision-pinned model bundle with `AssetManager`. Downloads are SHA-256 verified and reused from a persistent cache:
+
+```rust,no_run
+use extract_speech::{download::{AssetManager, ModelAsset}, Result};
+
+fn main() -> Result<()> {
+    let assets = AssetManager::default_cache()?;
+    let files = assets.model(ModelAsset::FsmnVadFp32)?;
+    println!("{}", files.model_path().display());
+    Ok(())
+}
+```
+
+This call downloads both `model.onnx` and the required `vad.mvn`. Other `ModelAsset` variants download their complete bundles in the same way. `AssetManager::all_models()` prepares every supported variant, `AssetManager::onnx_runtime()` prepares the compatible ONNX Runtime dynamic library, and `AssetManager::onnx_bundle()` prepares both a selected model and the runtime with one call.
+
 ## Silero VAD
 
 For the default Candle backend, download the ONNX Community Silero export:

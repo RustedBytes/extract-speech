@@ -24,8 +24,43 @@ The available features are:
 | --- | --- | --- |
 | `candle` | Yes | Candle backends for Silero, PulseVAD, and MarbleNet |
 | `onnxruntime` | Yes | ONNX Runtime backends for every supported model |
+| `download` | Yes | Revision-pinned, checksum-verified model and ONNX Runtime downloads |
 | `cli` | No | Command-line application, audio decoding, resampling, and output encoding |
 | `accelerate-src` | No | Apple Accelerate integration; also enables `candle` |
+
+## Automatic model downloads and caching
+
+The `download` feature provides one-call model bundles. Every download is pinned to a specific upstream revision, verified with SHA-256, written atomically, and reused from the cache on later calls. FSMN bundles include the required `vad.mvn` file next to the ONNX graph.
+
+```rust,no_run
+use extract_speech::{
+    download::{AssetManager, ModelAsset},
+    Detector, Model, Result, Runtime,
+};
+
+fn main() -> Result<()> {
+    let assets = AssetManager::default_cache()?;
+    let files = assets.model(ModelAsset::SileroV5)?;
+
+    let mut detector = Detector::builder(files.model_path())
+        .model(Model::Silero)
+        .runtime(Runtime::Candle)
+        .build()?;
+
+    let segments = detector.detect(&vec![0.0; 16_000])?;
+    println!("{} speech segments", segments.len());
+    Ok(())
+}
+```
+
+`AssetManager::all_models()` downloads all nine model variants with one call. To choose an application-specific cache location, use `AssetManager::new(path)`. Otherwise `AssetManager::default_cache()` uses:
+
+- `EXTRACT_SPEECH_CACHE_DIR` when set;
+- `%LOCALAPPDATA%/extract-speech` on Windows;
+- `~/Library/Caches/extract-speech` on macOS;
+- `$XDG_CACHE_HOME/extract-speech` or `~/.cache/extract-speech` on other Unix systems.
+
+The upstream model licenses still apply to downloaded artifacts. In particular, review the TEN VAD and NVIDIA MarbleNet licensing notes in [Models and runtimes](models-and-runtimes.md).
 
 ## Candle inference
 
@@ -58,17 +93,22 @@ fn detect(samples: &[f32]) -> Result<()> {
 
 ## ONNX Runtime inference
 
-The `onnxruntime` feature uses dynamic loading. Initialize ONNX Runtime once, before building any ONNX-backed detector, and pass the same execution-provider configuration to the builder:
+The `onnxruntime` feature uses dynamic loading. `AssetManager::onnx_bundle()` prepares the model, its sidecars, and the compatible CPU runtime with one call on Linux x86-64/ARM64, macOS ARM64, or Windows x86-64/ARM64. Initialize the returned runtime once before building any ONNX-backed detector:
 
 ```rust,no_run
-use extract_speech::{init_onnx_runtime, Detector, Model, Result, Runtime};
-use extract_speech::ort::ep::{CPU, CUDA};
+use extract_speech::{
+    download::{AssetManager, ModelAsset},
+    init_onnx_runtime, Detector, Model, Result, Runtime,
+};
+use extract_speech::ort::ep::CPU;
 
 fn main() -> Result<()> {
-    let providers = vec![CUDA::default().build(), CPU::default().build()];
-    init_onnx_runtime("/path/to/libonnxruntime.so", providers.clone())?;
+    let providers = vec![CPU::default().build()];
+    let assets = AssetManager::default_cache()?;
+    let bundle = assets.onnx_bundle(ModelAsset::SileroV5)?;
+    init_onnx_runtime(bundle.runtime().library_path(), providers.clone())?;
 
-    let mut detector = Detector::builder("models/silero-vad-v5.onnx")
+    let mut detector = Detector::builder(bundle.model().model_path())
         .model(Model::Silero)
         .runtime(Runtime::OnnxRuntime)
         .execution_providers(providers)
@@ -81,7 +121,7 @@ fn main() -> Result<()> {
 }
 ```
 
-Use the platform-specific ONNX Runtime dynamic-library filename on macOS or Windows. Execution providers that fail to initialize fall back according to ONNX Runtime's provider behavior.
+The automatic runtime bundle is the upstream CPU distribution. For CUDA or TensorRT, install the appropriate GPU distribution yourself and pass its dynamic-library path to `init_onnx_runtime`. Execution providers that fail to initialize fall back according to ONNX Runtime's provider behavior.
 
 ## Model/runtime compatibility
 

@@ -65,6 +65,7 @@ jobs:
         run: |
           cargo check --lib --no-default-features
           cargo check --lib --no-default-features --features candle
+          cargo check --lib --no-default-features --features download
           cargo check --lib --no-default-features --features onnxruntime
 
       - name: Verify crates.io package

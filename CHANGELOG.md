@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A checksum-verified download and cache API for every supported model bundle, required FSMN sidecar files, and compatible ONNX Runtime distributions across supported platforms.
 - MIT licensing metadata and license text for crates.io distribution.
 - A reusable Rust library API with a model-independent detector builder, speech-segment inference, feature-gated Candle and ONNX Runtime backends, and library usage documentation.
 - TEN VAD support through ONNX Runtime, including its reference feature frontend, recurrent state, documentation, and revision-pinned model integration tests.
