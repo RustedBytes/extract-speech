@@ -26,6 +26,8 @@
 mod detector;
 #[cfg(feature = "download")]
 pub mod download;
+#[cfg(feature = "python")]
+mod python;
 pub mod utils;
 pub mod vad_iter;
 

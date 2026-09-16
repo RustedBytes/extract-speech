@@ -30,5 +30,6 @@ vadded_files.json
 nerd.wav
 
 target/
+.venv/
 
 dist/

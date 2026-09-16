@@ -25,6 +25,7 @@ The available features are:
 | `candle` | Yes | Candle backends for Silero, PulseVAD, and MarbleNet |
 | `onnxruntime` | Yes | ONNX Runtime backends for every supported model |
 | `download` | Yes | Revision-pinned, checksum-verified model and ONNX Runtime downloads |
+| `python` | No | PyO3 extension module, Python inference API, and download helpers |
 | `cli` | No | Command-line application, audio decoding, resampling, and output encoding |
 | `accelerate-src` | No | Apple Accelerate integration; also enables `candle` |
 

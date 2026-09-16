@@ -1,0 +1,50 @@
+[build-system]
+requires = ["maturin>=1.9.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "extract-speech"
+dynamic = ["version"]
+description = "Voice activity detection inference backed by Rust"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Yehor Smoliakov" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Rust",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+[dependency-groups]
+dev = [
+    "pyright==1.1.414",
+    "ruff==0.16.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/RustedBytes/extract-speech"
+Repository = "https://github.com/RustedBytes/extract-speech"
+Documentation = "https://github.com/RustedBytes/extract-speech/blob/main/docs/python.md"
+
+[tool.maturin]
+bindings = "pyo3"
+features = ["python"]
+module-name = "extract_speech"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["B", "E4", "E7", "E9", "F", "I", "RUF", "UP"]
+
+[tool.pyright]
+include = ["examples/python_inference.py", "tests/python"]
+stubPath = "."
+pythonVersion = "3.9"
+reportMissingModuleSource = false
+typeCheckingMode = "strict"

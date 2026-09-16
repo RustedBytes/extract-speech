@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Optional PyO3 Python bindings with automatic model/runtime downloads, cached `from_pretrained` construction, float32 buffer inference, type stubs, uv/maturin packaging, and Ruff/Pyright quality gates.
 - A checksum-verified download and cache API for every supported model bundle, required FSMN sidecar files, and compatible ONNX Runtime distributions across supported platforms.
 - MIT licensing metadata and license text for crates.io distribution.
 - A reusable Rust library API with a model-independent detector builder, speech-segment inference, feature-gated Candle and ONNX Runtime backends, and library usage documentation.

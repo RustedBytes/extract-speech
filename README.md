@@ -19,6 +19,7 @@ It supports:
 - parallel processing of a directory of audio files
 - optional CUDA, TensorRT, and CoreML execution providers
 - a reusable, model-independent Rust inference API
+- optional Python bindings built with PyO3 and maturin
 - JSON metadata containing clip durations and inference time
 
 ## Library quick start
@@ -59,6 +60,25 @@ fn main() -> Result<()> {
 ```
 
 The same `Detector` can process multiple independent inputs; model state is reset between calls. See the [library guide](docs/library.md) for runtime features, ONNX Runtime initialization, and API details.
+
+## Python quick start
+
+Use `uv` to build and install the PyO3 extension from the repository, then load a cached model with one call:
+
+```bash
+uv sync --no-dev
+```
+
+```python
+import array
+import extract_speech
+
+detector = extract_speech.Detector.from_pretrained("silero")
+samples = array.array("f", [0.0] * extract_speech.SAMPLE_RATE)
+segments = detector.detect(samples)
+```
+
+See the [Python guide](docs/python.md) for local model paths, ONNX Runtime, supported buffer types, and download helpers.
 
 ## CLI quick start
 
@@ -103,6 +123,7 @@ The default runtime is Candle, the default detection threshold is `0.7`, and the
 | `candle` | Yes | Silero, PulseVAD, and MarbleNet inference through Candle |
 | `onnxruntime` | Yes | All supported models through dynamically loaded ONNX Runtime |
 | `download` | Yes | Checksum-verified model bundles, ONNX Runtime downloads, and persistent caching |
+| `python` | No | PyO3 extension module with inference and download APIs |
 | `cli` | No | The `extract-speech` executable and audio file I/O |
 | `accelerate-src` | No | Apple Accelerate integration for Candle builds |
 
@@ -119,6 +140,7 @@ For ONNX Runtime setup and compatible model requirements, see [Models and runtim
 
 - [Changelog](CHANGELOG.md) — notable changes by release
 - [Library](docs/library.md) — Rust API, Cargo features, and inference examples
+- [Python API](docs/python.md) — installation, automatic model loading, and inference
 - [Installation](docs/installation.md) — prerequisites, builds, and releases
 - [Usage](docs/usage.md) — inputs, outputs, CLI options, metadata, and examples
 - [Models and runtimes](docs/models-and-runtimes.md) — model compatibility and hardware acceleration
@@ -131,6 +153,11 @@ cargo fmt -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 cargo build --features cli
+uv sync --locked
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run python -m unittest discover -s tests/python -v
 ```
 
 See the [development guide](docs/development.md) for the code layout and project conventions.

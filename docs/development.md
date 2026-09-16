@@ -7,6 +7,7 @@
 | `src/lib.rs` | public library surface and feature-gated backend modules |
 | `src/detector.rs` | model-independent detector builder and inference API |
 | `src/download.rs` | pinned model/runtime registry, SHA-256 verification, extraction, and caching |
+| `src/python.rs` | optional PyO3 classes, functions, buffer conversion, and error mapping |
 | `src/main.rs` | optional CLI, runtime selection, folder processing, and output orchestration |
 | `src/audio.rs` | audio probing, decoding, mono conversion, and input resampling |
 | `src/vad_iter.rs` | shared Silero segmentation state machine |
@@ -48,6 +49,16 @@ cargo fmt -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 cargo build --features cli
+```
+
+Build and smoke-test the Python extension in uv's locked environment with:
+
+```bash
+uv sync --locked
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run python -m unittest discover -s tests/python -v
 ```
 
 The repository also provides `just` recipes:

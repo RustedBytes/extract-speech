@@ -7,10 +7,15 @@ on:
       - dev
     paths:
       - '**/*.rs'
+      - '**/*.py'
+      - '**/*.pyi'
       - 'scripts/test-models.sh'
       - 'test-audios/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.python-version'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/test-rust.yml'
   pull_request:
     branches:
@@ -18,10 +23,15 @@ on:
       - dev
     paths:
       - '**/*.rs'
+      - '**/*.py'
+      - '**/*.pyi'
       - 'scripts/test-models.sh'
       - 'test-audios/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - '.python-version'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/test-rust.yml'
 
 jobs:
@@ -40,6 +50,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v9
+        with:
+          python-version: '3.12'
+          version: '0.12.15'
+          enable-cache: true
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -67,12 +84,35 @@ jobs:
           cargo check --lib --no-default-features --features candle
           cargo check --lib --no-default-features --features download
           cargo check --lib --no-default-features --features onnxruntime
+          cargo check --lib --no-default-features --features python
 
       - name: Verify crates.io package
         run: cargo package --locked
 
       - name: Build CLI
         run: cargo build --features cli --verbose
+
+      - name: Install Python bindings and development tools
+        run: uv sync --locked
+
+      - name: Check Python formatting and lint
+        run: |
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+
+      - name: Run Python type checks
+        run: uv run --no-sync pyright
+
+      - name: Cache Python inference assets
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/extract-speech-python-cache
+          key: python-tests-v1-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Run Python binding tests
+        env:
+          EXTRACT_SPEECH_TEST_CACHE_DIR: ${{ runner.temp }}/extract-speech-python-cache
+        run: uv run --no-sync python -m unittest discover -s tests/python -v
 
       - name: Cache model test dependencies
         uses: actions/cache@v6
