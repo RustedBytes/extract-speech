@@ -4,8 +4,8 @@ use log::debug;
 use ndarray::{Array, ArrayD};
 use ort::value::Value;
 use ort::{
-    execution_providers::ExecutionProviderDispatch,
-    session::{builder::GraphOptimizationLevel, Session, SessionInputs},
+    ep::ExecutionProviderDispatch,
+    session::{builder::GraphOptimizationLevel, builder::SessionBuilder, Session, SessionInputs},
 };
 
 use crate::utils;
@@ -22,13 +22,19 @@ impl PyAnnote {
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
     ) -> Result<Self, anyhow::Error> {
-        let session = Session::builder()?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?
-            .with_inter_threads(1)?
-            .with_parallel_execution(false)?
-            .with_execution_providers(execution_providers)?
-            .commit_from_file(model_path)?;
+        let builder =
+            |result: ort::session::builder::BuilderResult| -> anyhow::Result<SessionBuilder> {
+                result.map_err(|error| anyhow::anyhow!(error.to_string()))
+            };
+        let session_builder = Session::builder()?;
+        let session_builder =
+            builder(session_builder.with_optimization_level(GraphOptimizationLevel::Level3))?;
+        let session_builder = builder(session_builder.with_intra_threads(1))?;
+        let session_builder = builder(session_builder.with_inter_threads(1))?;
+        let session_builder = builder(session_builder.with_parallel_execution(false))?;
+        let mut session_builder =
+            builder(session_builder.with_execution_providers(execution_providers))?;
+        let session = session_builder.commit_from_file(model_path)?;
 
         Ok(Self {
             vad_params,

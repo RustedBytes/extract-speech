@@ -1,42 +1,23 @@
-use std::num::NonZeroUsize;
-
+use fast_audio_resampler::{FirBackend, Quality, Resampler, ResamplerConfig};
 use log::info;
 
 pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Result<Vec<f32>> {
     info!("Resampling from {} to {}", sr_in, sr_out);
 
-    let quality = fixed_resample::ResampleQuality::High;
+    let config = ResamplerConfig {
+        input_rate: sr_in as u32,
+        output_rate: sr_out as u32,
+        channels: 1,
+        quality: Quality::Best,
+        backend: FirBackend::Auto,
+        max_input_frames_per_chunk: None,
+    };
+    let mut resampler = Resampler::<f32>::new(config)?;
+    let output_frames = (in_samples.len() as u64 * sr_out as u64).div_ceil(sr_in as u64) as usize;
+    let mut out_samples = Vec::with_capacity(output_frames);
 
-    let mut resampler = fixed_resample::FixedResampler::<f32, 1>::new(
-        NonZeroUsize::new(1).unwrap(),
-        sr_in as u32,
-        sr_out as u32,
-        quality,
-        true, // interleaved
-    );
-
-    let output_frames = resampler.out_alloc_frames(in_samples.len() as u64);
-    let mut out_samples: Vec<f32> = Vec::with_capacity(output_frames as usize);
-
-    resampler.process_interleaved(
-        in_samples,
-        // This method gets called whenever there is new resampled data.
-        |data| {
-            out_samples.extend_from_slice(data);
-        },
-        // Whether or not this is the last (or only) packet of data that
-        // will be resampled. This ensures that any leftover samples in
-        // the internal resampler are flushed to the output.
-        Some(fixed_resample::LastPacketInfo {
-            // Let the resampler know that we want an exact number of output
-            // frames. Otherwise the resampler may add extra padded zeros
-            // to the end.
-            desired_output_frames: Some(output_frames),
-        }),
-        // Trim the padded zeros at the beginning introduced by the internal
-        // resampler.
-        true, // trim_delay
-    );
+    resampler.process(in_samples, &mut out_samples)?;
+    resampler.finish(&mut out_samples)?;
 
     Ok(out_samples)
 }

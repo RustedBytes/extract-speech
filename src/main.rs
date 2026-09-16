@@ -7,10 +7,7 @@ use anyhow::Result;
 use chrono::prelude::*;
 use clap::{Parser, ValueEnum};
 use log::{debug, info};
-use ort::execution_providers::{
-    CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider,
-    ExecutionProviderDispatch, TensorRTExecutionProvider,
-};
+use ort::ep::{CoreML, ExecutionProviderDispatch, TensorRT, CPU, CUDA};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -573,24 +570,23 @@ fn main() -> Result<()> {
         ));
     }
 
-    let mut execution_providers: Vec<ExecutionProviderDispatch> =
-        vec![CPUExecutionProvider::default().build()];
+    let mut execution_providers: Vec<ExecutionProviderDispatch> = vec![CPU::default().build()];
 
     if args.cuda {
-        execution_providers.insert(0, CUDAExecutionProvider::default().build());
+        execution_providers.insert(0, CUDA::default().build());
     }
 
     if args.coreml {
-        execution_providers.insert(0, CoreMLExecutionProvider::default().build());
+        execution_providers.insert(0, CoreML::default().build());
     }
 
     if args.trt {
-        execution_providers.insert(0, TensorRTExecutionProvider::default().build());
+        execution_providers.insert(0, TensorRT::default().build());
     }
 
     // Print the model info
-    if args.print_model_info.is_some() {
-        print_model_info(args.model_path, args.print_model_info.unwrap())?;
+    if let Some(info) = args.print_model_info {
+        print_model_info(args.model_path, info)?;
         return Ok(());
     }
 
