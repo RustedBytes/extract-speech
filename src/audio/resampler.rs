@@ -4,8 +4,13 @@ use anyhow::Context;
 use fast_audio_resampler::{FirBackend, Quality, Resampler, ResamplerConfig};
 use log::info;
 
+/// Converts mono PCM samples between sample rates.
+///
+/// # Errors
+///
+/// Returns an error for invalid rates, oversized input, or resampler failures.
 pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Result<Vec<f32>> {
-    info!("Resampling from {} to {}", sr_in, sr_out);
+    info!("Resampling from {sr_in} to {sr_out}");
 
     anyhow::ensure!(sr_in > 0, "input sample rate must be greater than zero");
     anyhow::ensure!(sr_out > 0, "output sample rate must be greater than zero");
@@ -25,10 +30,11 @@ pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Resu
         max_input_frames_per_chunk: None,
     };
     let mut resampler = Resampler::<f32>::new(config)?;
-    let output_frames = (in_samples.len() as u64)
-        .checked_mul(output_rate as u64)
+    let output_frames = u64::try_from(in_samples.len())
+        .context("input is too large")?
+        .checked_mul(u64::from(output_rate))
         .context("resampled output length overflowed")?
-        .div_ceil(input_rate as u64);
+        .div_ceil(u64::from(input_rate));
     let output_frames = usize::try_from(output_frames).context("output is too large")?;
     let mut out_samples = Vec::with_capacity(output_frames);
 
@@ -39,6 +45,12 @@ pub fn resample(in_samples: &[f32], sr_in: usize, sr_out: usize) -> anyhow::Resu
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)] // Test sizes and generated sample indices are deliberately small.
 mod tests {
     use super::*;
 
@@ -151,8 +163,7 @@ mod tests {
         let avg: f32 = output.iter().sum::<f32>() / output.len() as f32;
         assert!(
             (avg - 1.0).abs() < 0.15,
-            "Average {} differs too much from 1.0",
-            avg
+            "Average {avg} differs too much from 1.0"
         );
 
         // Check that most values are reasonably close to 1.0

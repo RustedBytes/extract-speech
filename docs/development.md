@@ -31,7 +31,7 @@ Run the same core checks expected in CI before submitting a change:
 
 ```bash
 cargo fmt -- --check
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic
 cargo test --all-targets --all-features
 cargo build --features cli
 ```

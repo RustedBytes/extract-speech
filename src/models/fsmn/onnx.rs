@@ -25,6 +25,11 @@ pub struct FsmnVad {
 }
 
 impl FsmnVad {
+    /// Loads an FSMN model and its preprocessing sidecars.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the model, sidecars, or ONNX session cannot be initialized.
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
@@ -52,6 +57,11 @@ impl FsmnVad {
         })
     }
 
+    /// Computes a speech probability for every FSMN frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if feature extraction, inference, or tensor validation fails.
     pub fn speech_probabilities(&mut self, waveform: &[f32]) -> Result<Vec<f32>> {
         let features = self.frontend.extract(waveform)?;
         if features.is_empty() {
@@ -86,8 +96,10 @@ impl FsmnVad {
                 .get("logits")
                 .context("FSMN-VAD model did not return a 'logits' tensor")?
                 .try_extract_tensor::<f32>()?;
+            let expected_frame_count =
+                i64::try_from(frame_count).context("FSMN frame count exceeds i64")?;
             anyhow::ensure!(
-                shape.len() == 3 && shape[0] == 1 && shape[1] == frame_count as i64,
+                shape.len() == 3 && shape[0] == 1 && shape[1] == expected_frame_count,
                 "FSMN-VAD returned logits with shape {shape:?}; expected [1, {frame_count}, classes]"
             );
             let class_count = usize::try_from(shape[2]).context("invalid FSMN-VAD class count")?;

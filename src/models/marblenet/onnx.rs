@@ -1,4 +1,4 @@
-//! ONNX Runtime implementation of MarbleNet VAD.
+//! ONNX Runtime implementation of `MarbleNet` VAD.
 
 use std::path::PathBuf;
 
@@ -20,6 +20,11 @@ pub struct MarbleNet {
 }
 
 impl MarbleNet {
+    /// Loads a `MarbleNet` ONNX Runtime session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session cannot be configured or the model cannot be loaded.
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
@@ -46,6 +51,11 @@ impl MarbleNet {
         })
     }
 
+    /// Computes frame-level speech probabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if preprocessing, inference, or tensor validation fails.
     pub fn speech_probabilities(&mut self, waveform: &[f32]) -> Result<Vec<f32>> {
         let (features, feature_frames) = self.frontend.extract(waveform)?;
         if feature_frames == 0 {

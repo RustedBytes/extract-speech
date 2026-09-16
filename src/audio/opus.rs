@@ -13,7 +13,7 @@ const OPUS_ENCODER_FRAME_SIZE: usize = 960;
 const OPUS_SAMPLE_RATE: u32 = 48000;
 // const OPUS_ALLOWED_FRAME_SIZES: [usize; 6] = [120, 240, 480, 960, 1920, 2880];
 
-/// See https://www.opus-codec.org/docs/opusfile_api-0.4/structOpusHead.html
+/// See <https://www.opus-codec.org/docs/opusfile_api-0.4/structOpusHead.html>.
 #[allow(unused)]
 #[derive(Debug)]
 struct OpusHeader {
@@ -57,7 +57,9 @@ fn write_opus_tags<W: std::io::Write>(w: &mut W) -> std::io::Result<()> {
     // https://wiki.xiph.org/OggOpus#Comment_Header
     let vendor = "rust";
     w.write_all(b"OpusTags")?;
-    w.write_u32::<byteorder::LittleEndian>(vendor.len() as u32)?; // vendor string length
+    w.write_u32::<byteorder::LittleEndian>(
+        u32::try_from(vendor.len()).expect("static Opus vendor fits in u32"),
+    )?; // vendor string length
     w.write_all(vendor.as_bytes())?; // vendor string, UTF8 encoded
     w.write_u32::<byteorder::LittleEndian>(0u32)?; // number of tags
     Ok(())
@@ -93,7 +95,12 @@ fn write_ogg_48khz<W: std::io::Write>(
 
     // Write the opus headers and tags
     let mut head = Vec::new();
-    write_opus_header(&mut head, channels as u8, input_sample_rate, pre_skip)?;
+    write_opus_header(
+        &mut head,
+        u8::try_from(channels).expect("Opus supports at most two channels"),
+        input_sample_rate,
+        pre_skip,
+    )?;
     pw.write_packet(head, 42, ogg::PacketWriteEndInfo::EndPage, 0)?;
     let mut tags = Vec::new();
     write_opus_tags(&mut tags)?;
@@ -121,7 +128,8 @@ fn write_ogg_48khz<W: std::io::Write>(
             ogg::PacketWriteEndInfo::NormalPacket
         };
         let granule_position = if is_last {
-            input_frames as u64 + pre_skip as u64
+            u64::try_from(input_frames).context("input contains too many frames")?
+                + u64::from(pre_skip)
         } else {
             ((frame_index + 1) * OPUS_ENCODER_FRAME_SIZE) as u64
         };
@@ -131,6 +139,11 @@ fn write_ogg_48khz<W: std::io::Write>(
     Ok(())
 }
 
+/// Encodes mono PCM samples as an Ogg Opus stream.
+///
+/// # Errors
+///
+/// Returns an error if resampling, Opus encoding, or writing fails.
 pub fn write_ogg_mono<W: std::io::Write>(w: &mut W, pcm: &[f32], sample_rate: u32) -> Result<()> {
     if sample_rate == OPUS_SAMPLE_RATE {
         write_ogg_48khz(w, pcm, sample_rate, false)
@@ -140,6 +153,11 @@ pub fn write_ogg_mono<W: std::io::Write>(w: &mut W, pcm: &[f32], sample_rate: u3
     }
 }
 
+/// Writes mono PCM samples to an Ogg Opus file.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be created or encoding fails.
 pub fn write_opus(filename: impl AsRef<Path>, data: &[f32], sample_rate: u32) -> Result<()> {
     let w = std::fs::File::create(filename.as_ref())?;
 
@@ -151,6 +169,11 @@ pub fn write_opus(filename: impl AsRef<Path>, data: &[f32], sample_rate: u32) ->
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)] // Test signal generation uses small, bounded values.
 mod tests {
     use super::*;
 
@@ -251,7 +274,7 @@ mod tests {
         let pre_skip = u16::from_le_bytes([packets[0].data[10], packets[0].data[11]]);
         assert_eq!(
             packets.last().unwrap().absgp_page(),
-            pcm.len() as u64 + pre_skip as u64
+            pcm.len() as u64 + u64::from(pre_skip)
         );
     }
 

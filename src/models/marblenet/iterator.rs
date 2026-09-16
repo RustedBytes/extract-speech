@@ -3,6 +3,11 @@
 use crate::{marblenet_frontend::OUTPUT_FRAME_SAMPLES, utils, vad_iter};
 
 pub trait MarbleNetModel {
+    /// Computes speech probabilities for a waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns backend-specific preprocessing or inference errors.
     fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>>;
 }
 
@@ -27,6 +32,7 @@ pub struct MarbleNetIter<M> {
 }
 
 impl<M: MarbleNetModel> MarbleNetIter<M> {
+    #[must_use]
     pub fn new(model: M, mut params: utils::VadParams) -> Self {
         params.frame_size = OUTPUT_FRAME_SAMPLES * 1_000 / params.sample_rate;
         Self {
@@ -36,6 +42,11 @@ impl<M: MarbleNetModel> MarbleNetIter<M> {
         }
     }
 
+    /// Detects speech segments in one complete waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when probability inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
         let probabilities = self.model.speech_probabilities(samples)?;
         self.speeches =

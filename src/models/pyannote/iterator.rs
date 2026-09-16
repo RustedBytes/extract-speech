@@ -1,5 +1,13 @@
 //! PyAnnote-specific streaming iterator.
 
+// PyAnnote timestamps are defined in floating-point frame time and converted
+// back to non-negative sample offsets after validation.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+
 use log::debug;
 use ndarray::{ArrayView1, Axis, Ix3};
 
@@ -28,6 +36,7 @@ struct SegmentInternal {
 }
 
 impl PyAnnoteVadIter {
+    #[must_use]
     pub fn new(pyannote: PyAnnote, params: utils::VadParams) -> Self {
         let config = DiarizationConfig {
             offset: 990.0,
@@ -36,8 +45,8 @@ impl PyAnnoteVadIter {
         };
 
         if params.debug {
-            debug!("PyAnnote vad_params: {:?}", params);
-            debug!("PyAnnote config: {:?}", config);
+            debug!("PyAnnote vad_params: {params:?}");
+            debug!("PyAnnote config: {config:?}");
         }
 
         Self {
@@ -48,6 +57,11 @@ impl PyAnnoteVadIter {
         }
     }
 
+    /// Detects speech segments in one complete waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when inference or logits post-processing fails.
     pub fn process(&mut self, samples: &[f32]) -> Result<&[utils::TimeStamp], anyhow::Error> {
         self.reset_states();
 
@@ -88,20 +102,26 @@ impl PyAnnoteVadIter {
             let mut in_speech = false;
 
             for (i, frame_scores_view) in batch_item_logits.axis_iter(Axis(0)).enumerate() {
-                let probabilities = softmax(frame_scores_view);
+                let probabilities = softmax(&frame_scores_view);
 
                 // Find the class with maximum probability
                 let (score, class_id) = find_max(&probabilities);
 
                 // For VAD, we typically look at whether it's speech (class > 0) or not (class 0)
                 // Adjust threshold based on the probability
-                let is_speech = class_id > 0 && score > self.params.threshold;
+                let frame_has_speech = class_id > 0 && score > self.params.threshold;
 
                 let start_frame = i;
                 let end_frame = i + 1;
 
-                if is_speech {
-                    if !in_speech {
+                if frame_has_speech {
+                    if in_speech {
+                        // Continue current speech segment
+                        if let Some(last_segment) = accumulated_segments.last_mut() {
+                            last_segment.end = end_frame;
+                            last_segment.score += score;
+                        }
+                    } else {
                         // Start of new speech segment
                         in_speech = true;
                         accumulated_segments.push(SegmentInternal {
@@ -109,12 +129,6 @@ impl PyAnnoteVadIter {
                             end: end_frame,
                             score,
                         });
-                    } else {
-                        // Continue current speech segment
-                        if let Some(last_segment) = accumulated_segments.last_mut() {
-                            last_segment.end = end_frame;
-                            last_segment.score += score;
-                        }
                     }
                 } else if in_speech {
                     // End of speech segment
@@ -152,7 +166,7 @@ impl PyAnnoteVadIter {
 }
 
 // Softmax implementation for a 1D ArrayView
-fn softmax(x: ArrayView1<'_, f32>) -> Vec<f32> {
+fn softmax(x: &ArrayView1<'_, f32>) -> Vec<f32> {
     let max = x.iter().copied().fold(f32::NEG_INFINITY, f32::max);
     let mut softmax_array: Vec<f32> = x.iter().map(|value| (value - max).exp()).collect();
 
@@ -188,7 +202,7 @@ mod tests {
     #[test]
     fn softmax_handles_large_logits() {
         let logits = array![1_000.0, 1_001.0, 999.0];
-        let probabilities = softmax(logits.view());
+        let probabilities = softmax(&logits.view());
 
         assert!(probabilities.iter().all(|value| value.is_finite()));
         assert!((probabilities.iter().sum::<f32>() - 1.0).abs() < 1e-6);

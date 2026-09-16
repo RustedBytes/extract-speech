@@ -1,11 +1,25 @@
 //! Generic probability-to-speech-segment iterator.
 
+// Duration thresholds are expressed in seconds and converted from bounded sample counts.
+#![allow(clippy::cast_precision_loss)]
+
 use log::debug;
 
 use crate::utils;
 
 pub trait VadModel {
+    /// Resets model state before processing an independent audio stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend-specific reset error.
     fn reset(&mut self) -> anyhow::Result<()>;
+
+    /// Computes the speech probability for one audio frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend-specific inference or input-validation error.
     fn probability(&mut self, audio_frame: &[f32]) -> anyhow::Result<f32>;
 }
 
@@ -17,11 +31,12 @@ pub struct VadIter<M> {
 }
 
 impl<M: VadModel> VadIter<M> {
+    #[must_use]
     pub fn new(model: M, params: utils::VadParams) -> Self {
         let params = Params::from(params);
 
         if params.debug {
-            debug!("vad_params: {:?}", params);
+            debug!("vad_params: {params:?}");
         }
 
         Self {
@@ -31,6 +46,11 @@ impl<M: VadModel> VadIter<M> {
         }
     }
 
+    /// Detects speech segments in one complete waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the model cannot be reset or evaluated.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
         self.reset_states()?;
 

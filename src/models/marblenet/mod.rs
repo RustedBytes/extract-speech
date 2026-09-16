@@ -1,4 +1,4 @@
-//! MarbleNet VAD implementations and shared preprocessing.
+//! `MarbleNet` VAD implementations and shared preprocessing.
 
 #[cfg(feature = "candle")]
 pub mod candle;

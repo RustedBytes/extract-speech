@@ -105,21 +105,25 @@ pub struct ModelFiles {
 }
 
 impl ModelFiles {
+    #[must_use]
     pub fn asset(&self) -> ModelAsset {
         self.asset
     }
 
     /// Main ONNX graph to pass to `Detector::builder`.
+    #[must_use]
     pub fn model_path(&self) -> &Path {
         &self.model_path
     }
 
     /// Directory containing the model and all required sidecar files.
+    #[must_use]
     pub fn directory(&self) -> &Path {
         &self.directory
     }
 
     /// Every file in the downloaded bundle, including the main model.
+    #[must_use]
     pub fn files(&self) -> &[PathBuf] {
         &self.files
     }
@@ -141,25 +145,30 @@ pub struct OnnxBundle {
 }
 
 impl OnnxBundle {
+    #[must_use]
     pub fn model(&self) -> &ModelFiles {
         &self.model
     }
 
+    #[must_use]
     pub fn runtime(&self) -> &OnnxRuntimeFiles {
         &self.runtime
     }
 }
 
 impl OnnxRuntimeFiles {
+    #[must_use]
     pub fn version(&self) -> &'static str {
         ONNX_RUNTIME_VERSION
     }
 
+    #[must_use]
     pub fn archive_path(&self) -> &Path {
         &self.archive_path
     }
 
     /// Dynamic library to pass to `init_onnx_runtime`.
+    #[must_use]
     pub fn library_path(&self) -> &Path {
         &self.library_path
     }
@@ -180,15 +189,25 @@ impl AssetManager {
     }
 
     /// Uses `EXTRACT_SPEECH_CACHE_DIR` or the platform's conventional cache directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no platform cache directory can be resolved.
     pub fn default_cache() -> Result<Self> {
         Ok(Self::new(default_cache_dir()?))
     }
 
+    #[must_use]
     pub fn cache_dir(&self) -> &Path {
         &self.cache_dir
     }
 
     /// Ensures the selected model and every required sidecar file are cached.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a cache directory cannot be created, an artifact
+    /// cannot be downloaded, or its checksum does not match the registry.
     pub fn model(&self, asset: ModelAsset) -> Result<ModelFiles> {
         let spec = asset.spec();
         let directory = self.cache_dir.join("models").join(spec.directory);
@@ -211,6 +230,10 @@ impl AssetManager {
     }
 
     /// Downloads every supported model bundle. Existing valid files are reused.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first model download, filesystem, or checksum error.
     pub fn all_models(&self) -> Result<Vec<ModelFiles>> {
         ModelAsset::ALL
             .into_iter()
@@ -219,6 +242,10 @@ impl AssetManager {
     }
 
     /// Prepares a model bundle and ONNX Runtime with one call.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the model or runtime bundle cannot be cached.
     pub fn onnx_bundle(&self, asset: ModelAsset) -> Result<OnnxBundle> {
         Ok(OnnxBundle {
             model: self.model(asset)?,
@@ -230,6 +257,11 @@ impl AssetManager {
     ///
     /// Supported hosts are Linux x86-64/ARM64, macOS ARM64, and Windows
     /// x86-64/ARM64.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for unsupported hosts or when the runtime cannot be
+    /// downloaded, verified, or extracted.
     pub fn onnx_runtime(&self) -> Result<OnnxRuntimeFiles> {
         let spec = runtime_spec()?;
         let directory = self
@@ -247,13 +279,9 @@ impl AssetManager {
         let checksum_path = directory.join(format!("{}.sha256", spec.library_name));
         let library_is_valid = library_path.is_file()
             && checksum_path.is_file()
-            && fs::read_to_string(&checksum_path)
-                .ok()
-                .is_some_and(|expected| {
-                    file_sha256(&library_path)
-                        .ok()
-                        .is_some_and(|actual| actual == expected.trim())
-                });
+            && fs::read_to_string(&checksum_path).is_ok_and(|expected| {
+                file_sha256(&library_path).is_ok_and(|actual| actual == expected.trim())
+            });
         if !library_is_valid {
             if library_path.exists() {
                 fs::remove_file(&library_path).with_context(|| {
@@ -276,6 +304,10 @@ impl AssetManager {
 }
 
 /// Resolves the persistent cache directory without creating it.
+///
+/// # Errors
+///
+/// Returns an error when the required platform environment variables are absent.
 pub fn default_cache_dir() -> Result<PathBuf> {
     if let Some(path) = env::var_os("EXTRACT_SPEECH_CACHE_DIR").filter(|value| !value.is_empty()) {
         return Ok(PathBuf::from(path));
@@ -399,7 +431,7 @@ fn download_verified(url: &str, expected_sha256: &str, destination: &Path) -> Re
         .with_context(|| format!("failed to create a temporary file in {}", parent.display()))?;
     let mut reader = response.body_mut().as_reader();
     let mut hasher = Sha256::new();
-    let mut buffer = [0_u8; 64 * 1024];
+    let mut buffer = vec![0_u8; 64 * 1024];
     loop {
         let read = reader
             .read(&mut buffer)
@@ -437,7 +469,7 @@ fn file_sha256(path: &Path) -> Result<String> {
     let mut file = File::open(path)
         .with_context(|| format!("failed to open cached file {}", path.display()))?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0_u8; 64 * 1024];
+    let mut buffer = vec![0_u8; 64 * 1024];
     loop {
         let read = file
             .read(&mut buffer)
@@ -550,7 +582,10 @@ fn extract_runtime_library(
                                 && name.is_some_and(|name| name.starts_with("libonnxruntime.so.")))
                             || (expected == "libonnxruntime.dylib"
                                 && name.is_some_and(|name| {
-                                    name.starts_with("libonnxruntime.") && name.ends_with(".dylib")
+                                    name.starts_with("libonnxruntime.")
+                                        && Path::new(name).extension().is_some_and(|extension| {
+                                            extension.eq_ignore_ascii_case("dylib")
+                                        })
                                 }))
                     });
                 if matches && entry.header().entry_type().is_file() {

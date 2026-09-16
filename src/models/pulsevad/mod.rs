@@ -1,4 +1,4 @@
-//! PulseVAD implementations and shared preprocessing.
+//! `PulseVAD` implementations and shared preprocessing.
 
 #[cfg(feature = "candle")]
 pub mod candle;

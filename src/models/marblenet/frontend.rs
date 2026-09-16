@@ -1,4 +1,7 @@
-//! MarbleNet feature extraction.
+//! `MarbleNet` feature extraction.
+
+// FFT/mel formulas intentionally map bounded indices through floating-point space.
+#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
 use std::sync::Arc;
 
@@ -22,6 +25,7 @@ pub struct MarbleNetFrontend {
 }
 
 impl MarbleNetFrontend {
+    #[must_use]
     pub fn new() -> Self {
         let mut planner = FftPlanner::new();
         Self {
@@ -31,6 +35,11 @@ impl MarbleNetFrontend {
         }
     }
 
+    /// Extracts normalized log-mel features and returns their frame count.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the generated feature layout is inconsistent.
     pub fn extract(&self, waveform: &[f32]) -> anyhow::Result<(Vec<f32>, usize)> {
         if waveform.is_empty() {
             return Ok((Vec::new(), 0));
@@ -58,7 +67,7 @@ impl MarbleNetFrontend {
             for window_index in 0..WIN_LENGTH {
                 let padded_index = padded_start + window_offset + window_index;
                 let source_index = reflected_index(
-                    padded_index as isize - (N_FFT / 2) as isize,
+                    padded_index.cast_signed() - (N_FFT / 2).cast_signed(),
                     emphasized.len(),
                 );
                 fft_buffer[window_offset + window_index] =
@@ -95,7 +104,7 @@ fn reflected_index(index: isize, len: usize) -> usize {
     }
 
     let period = 2 * (len - 1);
-    let wrapped = index.rem_euclid(period as isize) as usize;
+    let wrapped = index.rem_euclid(period.cast_signed()).unsigned_abs();
     if wrapped < len {
         wrapped
     } else {
@@ -166,6 +175,11 @@ fn slaney_mel_to_hz(mel: f64) -> f64 {
     }
 }
 
+/// Converts two-class `MarbleNet` logits into a speech probability.
+///
+/// # Errors
+///
+/// Returns an error unless exactly two logits are supplied.
 pub fn speech_probability(logits: &[f32]) -> anyhow::Result<f32> {
     anyhow::ensure!(
         logits.len() >= 2,
@@ -181,6 +195,7 @@ pub fn speech_probability(logits: &[f32]) -> anyhow::Result<f32> {
 }
 
 #[cfg(test)]
+#[allow(clippy::cast_precision_loss, clippy::float_cmp)] // DSP fixtures use bounded indices and exact edge values.
 mod tests {
     use super::*;
 

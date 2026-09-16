@@ -1,4 +1,4 @@
-//! Candle implementation of MarbleNet VAD.
+//! Candle implementation of `MarbleNet` VAD.
 
 use std::{collections::HashMap, path::PathBuf};
 
@@ -16,6 +16,11 @@ pub struct MarbleNet {
 }
 
 impl MarbleNet {
+    /// Loads a `MarbleNet` model for Candle inference.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the ONNX model cannot be read.
     pub fn new(model_path: PathBuf, device: candle_core::Device, debug: bool) -> Result<Self> {
         let model = candle_onnx::read_file(model_path)?;
         Ok(Self {
@@ -26,6 +31,11 @@ impl MarbleNet {
         })
     }
 
+    /// Computes frame-level speech probabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if feature extraction or Candle evaluation fails.
     pub fn speech_probabilities(&self, waveform: &[f32]) -> Result<Vec<f32>> {
         let (features, feature_frames) = self.frontend.extract(waveform)?;
         if feature_frames == 0 {

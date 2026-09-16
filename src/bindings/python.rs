@@ -1,4 +1,7 @@
-//! Python bindings exposed through PyO3.
+//! Python bindings exposed through `PyO3`.
+
+// Sample offsets are intentionally converted to seconds for the Python API.
+#![allow(clippy::cast_precision_loss)]
 
 use std::{
     path::{Path, PathBuf},
@@ -357,10 +360,9 @@ fn build_detector(
 }
 
 fn asset_manager(cache_dir: Option<PathBuf>) -> anyhow::Result<AssetManager> {
-    cache_dir
-        .map(AssetManager::new)
-        .map(Ok)
-        .unwrap_or_else(AssetManager::default_cache)
+    cache_dir.map_or_else(AssetManager::default_cache, |path| {
+        Ok(AssetManager::new(path))
+    })
 }
 
 fn ensure_onnx_runtime(path: &Path) -> anyhow::Result<()> {
@@ -515,6 +517,7 @@ const fn asset_name(asset: ModelAsset) -> &'static str {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn runtime_error(error: anyhow::Error) -> PyErr {
     PyRuntimeError::new_err(format!("{error:#}"))
 }

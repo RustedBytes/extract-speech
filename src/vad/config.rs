@@ -42,6 +42,7 @@ impl std::fmt::Display for TimeStamp {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // Configuration values are copied constants, not computed results.
 mod tests {
     use super::*;
 
@@ -105,7 +106,7 @@ mod tests {
             end: 2000,
         };
 
-        let display_string = format!("{}", ts);
+        let display_string = format!("{ts}");
         assert_eq!(display_string, "[start:00001000, end:00002000]");
     }
 
@@ -113,10 +114,10 @@ mod tests {
     fn test_timestamp_display_padding() {
         let ts = TimeStamp {
             start: 42,
-            end: 123456789,
+            end: 123_456_789,
         };
 
-        let display_string = format!("{}", ts);
+        let display_string = format!("{ts}");
         assert_eq!(display_string, "[start:00000042, end:123456789]");
     }
 

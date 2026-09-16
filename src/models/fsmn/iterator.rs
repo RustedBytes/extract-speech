@@ -9,6 +9,7 @@ pub struct FsmnVadIter {
 }
 
 impl FsmnVadIter {
+    #[must_use]
     pub fn new(model: FsmnVad, mut params: utils::VadParams) -> Self {
         params.frame_size = 10;
         Self {
@@ -18,6 +19,11 @@ impl FsmnVadIter {
         }
     }
 
+    /// Detects speech segments in one complete waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when FSMN feature extraction or inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
         let probabilities = self.model.speech_probabilities(samples)?;
         self.speeches =

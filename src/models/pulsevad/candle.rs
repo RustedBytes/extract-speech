@@ -1,4 +1,4 @@
-//! Candle implementation of PulseVAD.
+//! Candle implementation of `PulseVAD`.
 
 use std::{collections::HashMap, path::PathBuf};
 
@@ -19,6 +19,11 @@ pub struct PulseVad {
 }
 
 impl PulseVad {
+    /// Loads a `PulseVAD` model for Candle inference.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the ONNX model cannot be read.
     pub fn new(
         model_path: PathBuf,
         device: candle_core::Device,
@@ -76,6 +81,7 @@ fn sigmoid(value: f32) -> f32 {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // Sigmoid saturation and midpoint are exact expectations.
 mod tests {
     use super::*;
 

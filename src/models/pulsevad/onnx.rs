@@ -1,4 +1,4 @@
-//! ONNX Runtime implementation of PulseVAD.
+//! ONNX Runtime implementation of `PulseVAD`.
 
 use std::path::PathBuf;
 
@@ -23,6 +23,11 @@ pub struct PulseVad {
 }
 
 impl PulseVad {
+    /// Loads a `PulseVAD` ONNX Runtime session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session cannot be configured or the model cannot be loaded.
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,

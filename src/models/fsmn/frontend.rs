@@ -19,6 +19,11 @@ pub struct FsmnVadFrontend {
 }
 
 impl FsmnVadFrontend {
+    /// Loads the CMVN sidecar data located next to an FSMN model.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the sidecar is missing, unreadable, or malformed.
     pub fn from_model_path(model_path: &Path) -> Result<Self> {
         let model_dir = model_path.parent().unwrap_or_else(|| Path::new("."));
         let cmvn_path = ["vad.mvn", "am.mvn"]
@@ -46,11 +51,16 @@ impl FsmnVadFrontend {
         Ok(Self { means, scales })
     }
 
+    /// Extracts normalized low-frame-rate filterbank features.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the filterbank cannot be initialized or evaluated.
     pub fn extract(&self, waveform: &[f32]) -> Result<Vec<f32>> {
         let mut options = FbankOptions::default();
         options.frame_opts.samp_freq = SAMPLE_RATE;
         options.frame_opts.dither = 0.0;
-        options.frame_opts.window_type = "hamming".to_owned();
+        "hamming".clone_into(&mut options.frame_opts.window_type);
         options.frame_opts.frame_shift_ms = 10.0;
         options.frame_opts.frame_length_ms = 25.0;
         options.frame_opts.snip_edges = true;
@@ -128,6 +138,7 @@ fn apply_lfr(inputs: &[Vec<f32>]) -> Vec<f32> {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // These fixtures contain exactly representable values.
 mod tests {
     use super::*;
 

@@ -151,10 +151,11 @@ fn segment_output_samples(
     prepare_output_samples(checked_segment(samples, speech)?, output_sample_rate)
 }
 
+#[allow(clippy::cast_precision_loss)] // Durations intentionally expose fractional seconds.
 fn interval_metadata(filename: String, sample_count: usize, sample_rate: u32) -> IntervalMetadata {
     IntervalMetadata {
         filename,
-        duration: format!("{:.6}", sample_count as f64 / sample_rate as f64),
+        duration: format!("{:.6}", sample_count as f64 / f64::from(sample_rate)),
     }
 }
 
@@ -223,10 +224,11 @@ fn prepare_output_samples(samples: &[f32], output_sample_rate: usize) -> Result<
     }
 }
 
+#[allow(clippy::cast_possible_truncation)] // Samples are clamped to the i16 PCM range first.
 fn write_wav(path: &Path, samples: &[f32], spec: hound::WavSpec) -> Result<()> {
     let mut writer = hound::WavWriter::create(path, spec)?;
     for sample in samples {
-        writer.write_sample((sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)?;
+        writer.write_sample((sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)) as i16)?;
     }
     writer.finalize()?;
     Ok(())
@@ -247,6 +249,6 @@ mod tests {
     fn output_samples_are_resampled_to_requested_rate() {
         let samples = vec![0.0; SAMPLE_RATE];
         let output = prepare_output_samples(&samples, 8_000).unwrap();
-        assert!((output.len() as isize - 8_000).abs() <= 2);
+        assert!((output.len().cast_signed() - 8_000).abs() <= 2);
     }
 }

@@ -1,5 +1,8 @@
 //! PulseVAD-specific streaming iterator.
 
+// Segment weights are ratios of bounded window lengths.
+#![allow(clippy::cast_precision_loss)]
+
 use log::debug;
 
 use crate::{
@@ -15,6 +18,7 @@ pub struct PulseVadIter<M> {
 }
 
 impl<M: VadModel> PulseVadIter<M> {
+    #[must_use]
     pub fn new(model: M, params: utils::VadParams) -> Self {
         Self {
             model,
@@ -23,6 +27,11 @@ impl<M: VadModel> PulseVadIter<M> {
         }
     }
 
+    /// Detects speech segments using overlapping `PulseVAD` windows.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when model reset or probability inference fails.
     pub fn process(&mut self, samples: &[f32]) -> anyhow::Result<&[utils::TimeStamp]> {
         self.model.reset()?;
         self.speeches.clear();

@@ -78,6 +78,7 @@ pub(super) enum OutputType {
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, long_about = None)]
+#[allow(clippy::struct_excessive_bools)] // Independent CLI switches map directly to runtime flags.
 pub(super) struct Args {
     /// Print the model info
     #[arg(long)]
@@ -135,7 +136,7 @@ pub(super) struct Args {
     #[arg(long, default_value = "16000")]
     pub(super) sample_rate: usize,
 
-    /// Enable TensorRT
+    /// Enable `TensorRT`
     #[arg(long, default_value_t = false)]
     pub(super) trt: bool,
 
@@ -143,7 +144,7 @@ pub(super) struct Args {
     #[arg(long, default_value_t = false)]
     pub(super) cuda: bool,
 
-    /// Enable CoreML
+    /// Enable `CoreML`
     #[arg(long, default_value_t = false)]
     pub(super) coreml: bool,
 

@@ -1,6 +1,6 @@
 //! TEN VAD adapter.
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use anyhow::Context;
 use log::debug;
@@ -15,8 +15,14 @@ pub struct TenVad {
 }
 
 impl TenVad {
-    pub fn new(model_path: PathBuf, debug: bool) -> anyhow::Result<Self> {
+    /// Loads a TEN VAD model.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is not UTF-8 or model initialization fails.
+    pub fn new(model_path: impl AsRef<Path>, debug: bool) -> anyhow::Result<Self> {
         let model_path = model_path
+            .as_ref()
             .to_str()
             .context("TEN VAD model path is not valid UTF-8")?;
         let model = ten_vad_rs::TenVad::new(model_path, ten_vad_rs::TARGET_SAMPLE_RATE)
@@ -54,10 +60,11 @@ impl VadModel for TenVad {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn sample_to_i16(sample: f32) -> i16 {
     (sample.clamp(-1.0, 1.0) * 32_768.0)
         .round()
-        .clamp(i16::MIN as f32, i16::MAX as f32) as i16
+        .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
 }
 
 #[cfg(test)]

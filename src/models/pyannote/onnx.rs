@@ -1,4 +1,4 @@
-//! ONNX Runtime implementation of PyAnnote segmentation.
+//! ONNX Runtime implementation of `PyAnnote` segmentation.
 
 use std::path::PathBuf;
 
@@ -20,6 +20,11 @@ pub struct PyAnnote {
 }
 
 impl PyAnnote {
+    /// Loads a `PyAnnote` ONNX Runtime session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session cannot be configured or the model cannot be loaded.
     pub fn new(
         vad_params: utils::VadParams,
         execution_providers: Vec<ExecutionProviderDispatch>,
@@ -49,6 +54,11 @@ impl PyAnnote {
         // PyAnnote doesn't maintain state between calls
     }
 
+    /// Computes frame-level segmentation logits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if inference fails or the output tensor is invalid.
     pub fn get_frame_probabilities(
         &mut self,
         audio_samples: &[f32],
@@ -76,10 +86,13 @@ impl PyAnnote {
         let (shape, data) = logits.try_extract_tensor()?.to_owned();
 
         if self.vad_params.debug {
-            debug!("PyAnnote output shape: {:?}", shape);
+            debug!("PyAnnote output shape: {shape:?}");
         }
 
-        let shape_usize: Vec<usize> = shape.iter().map(|&x| x as usize).collect();
+        let shape_usize: Vec<usize> = shape
+            .iter()
+            .map(|&dimension| usize::try_from(dimension).context("negative tensor dimension"))
+            .collect::<anyhow::Result<_>>()?;
         let probabilities = Array::from_shape_vec(shape_usize, data.to_vec())?;
 
         Ok(probabilities)

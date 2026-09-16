@@ -2,7 +2,7 @@ fmt:
     cargo fmt
 
 clippy:
-    cargo clippy --all-targets --all-features -- -D warnings
+    cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic
 
 release: fmt
     cargo build --release --features cli

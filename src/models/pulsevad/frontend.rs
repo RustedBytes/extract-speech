@@ -1,4 +1,7 @@
-//! PulseVAD feature extraction.
+//! `PulseVAD` feature extraction.
+
+// FFT/mel formulas intentionally map bounded indices through floating-point space.
+#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
 use std::sync::Arc;
 
@@ -23,6 +26,7 @@ pub struct PulseVadFrontend {
 }
 
 impl PulseVadFrontend {
+    #[must_use]
     pub fn new() -> Self {
         let mut planner = FftPlanner::new();
         let fft = planner.plan_fft_forward(N_FFT);
@@ -40,6 +44,11 @@ impl PulseVadFrontend {
         }
     }
 
+    /// Extracts normalized `PulseVAD` log-mel features.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the input contains exactly one model window.
     pub fn extract(&self, waveform: &[f32]) -> anyhow::Result<Vec<f32>> {
         anyhow::ensure!(
             waveform.len() == WINDOW_SAMPLES,
@@ -154,6 +163,7 @@ fn make_mel_filterbank() -> Vec<f32> {
 }
 
 #[cfg(test)]
+#[allow(clippy::cast_precision_loss)] // Test waveforms use small, bounded indices.
 mod tests {
     use super::*;
 

@@ -1,4 +1,4 @@
-//! PyAnnote segmentation ONNX implementation.
+//! `PyAnnote` segmentation ONNX implementation.
 
 pub mod iterator;
 pub mod onnx;

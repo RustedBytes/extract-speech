@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Grouped VAD core, model backends, audio utilities, asset management, Python bindings, and CLI code into domain-focused modules while preserving the existing public module paths.
 - Reworked the CLI to use the public `Detector` API instead of maintaining a separate model/runtime dispatch implementation.
+- Enabled Clippy's pedantic lint group in local development and CI, with narrowly scoped exceptions for intentional DSP conversions and exact test fixtures.
 
 ## [0.6.0] - 2026-09-16
 

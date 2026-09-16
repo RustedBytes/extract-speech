@@ -26,6 +26,11 @@ pub struct Silero {
 }
 
 impl Silero {
+    /// Loads a Silero model for Candle inference.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the model or its initial tensors cannot be created.
     pub fn new(
         vad_params: utils::VadParams,
         model_path: PathBuf,
@@ -42,7 +47,10 @@ impl Silero {
             32
         };
 
-        let sample_rate = Tensor::new(vad_params.sample_rate as i64, &device)?;
+        let sample_rate = Tensor::new(
+            i64::try_from(vad_params.sample_rate).context("sample rate exceeds i64")?,
+            &device,
+        )?;
 
         let state = State {
             frame_size_samples,

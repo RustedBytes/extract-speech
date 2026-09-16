@@ -10,18 +10,24 @@ use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::errors::Error;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, TrackType};
-use symphonia::core::io::MediaSourceStream;
+use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::MetadataOptions;
 
 use crate::{resampler::resample, utils::VAD_SAMPLE_RATE};
 
+/// Decodes an audio file to mono, normalized 16 kHz PCM samples.
+///
+/// # Errors
+///
+/// Returns an error when the file cannot be read or decoded, has an unsupported
+/// channel layout, lacks required metadata, or cannot be resampled.
 pub fn load_samples_from_audio_file(path: impl AsRef<Path>) -> anyhow::Result<Vec<f32>> {
     let path = path.as_ref();
     let file = Box::new(
         File::open(path)
             .with_context(|| format!("failed to open audio file {}", path.display()))?,
     );
-    let mss = MediaSourceStream::new(file, Default::default());
+    let mss = MediaSourceStream::new(file, MediaSourceStreamOptions::default());
 
     let mut hint = Hint::new();
     if let Some(extension) = path.extension().and_then(|extension| extension.to_str()) {
@@ -29,9 +35,9 @@ pub fn load_samples_from_audio_file(path: impl AsRef<Path>) -> anyhow::Result<Ve
     }
 
     // Use the default options when reading and decoding.
-    let format_opts: FormatOptions = Default::default();
-    let metadata_opts: MetadataOptions = Default::default();
-    let decoder_opts: AudioDecoderOptions = Default::default();
+    let format_opts = FormatOptions::default();
+    let metadata_opts = MetadataOptions::default();
+    let decoder_opts = AudioDecoderOptions::default();
 
     // Probe the media source stream for a format.
     let mut format = symphonia::default::get_probe()
@@ -127,10 +133,7 @@ pub fn load_samples_from_audio_file(path: impl AsRef<Path>) -> anyhow::Result<Ve
     }
 
     if sample_rate as usize != VAD_SAMPLE_RATE {
-        info!(
-            "Sample rate mismatch: expected {}, got {}, resampling...",
-            VAD_SAMPLE_RATE, sample_rate
-        );
+        info!("Sample rate mismatch: expected {VAD_SAMPLE_RATE}, got {sample_rate}, resampling...");
 
         samples = resample(&samples, sample_rate as usize, VAD_SAMPLE_RATE)?;
     }

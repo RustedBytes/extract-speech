@@ -42,6 +42,7 @@ pub struct DetectorBuilder {
 
 impl DetectorBuilder {
     /// Starts configuring a detector which will load `model_path`.
+    #[must_use]
     pub fn new(model_path: impl Into<PathBuf>) -> Self {
         Self {
             model_path: model_path.into(),
@@ -55,28 +56,33 @@ impl DetectorBuilder {
         }
     }
 
+    #[must_use]
     pub fn model(mut self, model: Model) -> Self {
         self.model = model;
         self
     }
 
+    #[must_use]
     pub fn runtime(mut self, runtime: Runtime) -> Self {
         self.runtime = runtime;
         self
     }
 
+    #[must_use]
     pub fn parameters(mut self, params: VadParams) -> Self {
         self.params = params;
         self
     }
 
     #[cfg(feature = "candle")]
+    #[must_use]
     pub fn candle_device(mut self, device: candle_core::Device) -> Self {
         self.candle_device = device;
         self
     }
 
     #[cfg(feature = "onnxruntime")]
+    #[must_use]
     pub fn execution_providers(
         mut self,
         execution_providers: Vec<ort::ep::ExecutionProviderDispatch>,
@@ -86,6 +92,11 @@ impl DetectorBuilder {
     }
 
     /// Loads the model and creates a stateful detector.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid parameters, unsupported model/runtime
+    /// combinations, or backend initialization failures.
     pub fn build(mut self) -> Result<Detector> {
         validate_parameters(&self.params)?;
 
@@ -208,11 +219,16 @@ pub struct Detector {
 }
 
 impl Detector {
+    #[must_use]
     pub fn builder(model_path: impl Into<PathBuf>) -> DetectorBuilder {
         DetectorBuilder::new(model_path)
     }
 
     /// Detects speech in mono, normalized 16 kHz PCM samples.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if model reset, preprocessing, or inference fails.
     pub fn detect(&mut self, samples: &[f32]) -> Result<Vec<SpeechSegment>> {
         let segments: &[SpeechSegment] = match &mut self.backend {
             #[cfg(feature = "candle")]
@@ -288,6 +304,11 @@ fn validate_parameters(params: &VadParams) -> Result<()> {
 }
 
 #[cfg(feature = "onnxruntime")]
+/// Initializes the dynamically loaded ONNX Runtime environment.
+///
+/// # Errors
+///
+/// Returns an error if the path is not UTF-8 or the runtime cannot be loaded.
 pub fn init_onnx_runtime(
     dynamic_library_path: impl AsRef<std::path::Path>,
     execution_providers: Vec<ort::ep::ExecutionProviderDispatch>,

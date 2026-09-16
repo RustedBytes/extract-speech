@@ -152,7 +152,7 @@ For ONNX Runtime setup and compatible model requirements, see [Models and runtim
 
 ```bash
 cargo fmt -- --check
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic
 cargo test --all-targets --all-features
 cargo build --features cli
 uv sync --locked

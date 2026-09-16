@@ -24,6 +24,11 @@ pub struct Silero {
 }
 
 impl Silero {
+    /// Loads a Silero ONNX Runtime session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the session or its initial state cannot be created.
     pub fn new(
         vad_params: utils::VadParams,
         execution_providers: Vec<ExecutionProviderDispatch>,
@@ -52,7 +57,9 @@ impl Silero {
             32
         };
 
-        let sample_rate = Array::from_vec(vec![vad_params.sample_rate as i64]);
+        let sample_rate = Array::from_vec(vec![
+            i64::try_from(vad_params.sample_rate).context("sample rate exceeds i64")?
+        ]);
 
         let state = ArrayD::<f32>::zeros([2, 1, 128].as_slice());
         let context = ArrayD::<f32>::zeros([1, context_size].as_slice());
