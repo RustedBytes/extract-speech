@@ -60,7 +60,9 @@ cargo build --release --features "cli,accelerate-src"
 
 ## Prebuilt releases
 
-When available, platform binaries can be downloaded from the project's [GitHub releases](https://github.com/RustedBytes/extract-speech/releases).
+Platform CLI binaries and Python wheels can be downloaded from the project's
+[GitHub releases](https://github.com/RustedBytes/extract-speech/releases). Wheels are built for
+CPython 3.9 through 3.14 on manylinux x86-64, macOS ARM64, and Windows x86-64.
 
 ## Next steps
 

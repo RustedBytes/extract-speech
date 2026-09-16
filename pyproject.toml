@@ -43,7 +43,7 @@ target-version = "py39"
 select = ["B", "E4", "E7", "E9", "F", "I", "RUF", "UP"]
 
 [tool.pyright]
-include = ["examples/python_inference.py", "tests/python"]
+include = ["examples/python_inference.py", "scripts/test-release-wheels.py", "tests/python"]
 stubPath = "."
 pythonVersion = "3.9"
 reportMissingModuleSource = false

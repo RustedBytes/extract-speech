@@ -17,6 +17,15 @@ Alternatively, build a wheel:
 uv build --wheel
 ```
 
+Tagged GitHub releases contain prebuilt wheels for CPython 3.9 through 3.14 on
+manylinux x86-64, macOS ARM64, and Windows x86-64. Download the wheel matching
+your interpreter and platform, then install it into a uv environment:
+
+```bash
+uv venv
+uv pip install ./extract_speech-*-cp312-cp312-manylinux_2_28_x86_64.whl
+```
+
 `uv` invokes maturin through `pyproject.toml`; maturin enables the `python` feature automatically.
 Commands which import the local package should run through `uv run`, for example:
 

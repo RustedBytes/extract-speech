@@ -112,4 +112,4 @@ Create an optimized binary with:
 cargo build --release --features cli
 ```
 
-The release profile enables optimization, link-time optimization, symbol stripping, and no debug information. The matrix-based release workflow builds Linux x86-64, macOS aarch64, and Windows x86-64 artifacts on tagged pushes or manual runs. Tagged pushes also publish all three binaries to a GitHub Release.
+The release profile enables optimization, link-time optimization, symbol stripping, and no debug information. The matrix-based release workflow builds Linux x86-64, macOS aarch64, and Windows x86-64 CLI artifacts plus CPython 3.9–3.14 wheels. Every wheel is installed and imported through uv before upload. Tagged pushes publish the binaries and wheels together in a GitHub Release.
