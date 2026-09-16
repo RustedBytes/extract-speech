@@ -21,7 +21,6 @@ const MAX_CHUNK_FRAMES: usize = 6_000;
 pub struct FsmnVad {
     session: Session,
     frontend: FsmnVadFrontend,
-    debug: bool,
 }
 
 impl FsmnVad {
@@ -33,7 +32,7 @@ impl FsmnVad {
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
-        debug: bool,
+        _debug: bool,
     ) -> Result<Self> {
         let frontend = FsmnVadFrontend::from_model_path(&model_path)?;
         let builder =
@@ -50,11 +49,7 @@ impl FsmnVad {
             builder(session_builder.with_execution_providers(execution_providers))?;
         let session = session_builder.commit_from_file(model_path)?;
 
-        Ok(Self {
-            session,
-            frontend,
-            debug,
-        })
+        Ok(Self { session, frontend })
     }
 
     /// Computes a speech probability for every FSMN frame.
@@ -83,7 +78,7 @@ impl FsmnVad {
                 Value::from_array(caches[3].clone())?,
             ];
 
-            if self.debug {
+            if log::log_enabled!(log::Level::Debug) {
                 debug!(
                     "FSMN-VAD input: {:?}, dtype: {:?}",
                     values[0].shape(),
@@ -132,12 +127,10 @@ impl FsmnVad {
             }
         }
 
-        if self.debug {
-            debug!(
-                "FSMN-VAD produced {} frame probabilities",
-                probabilities.len()
-            );
-        }
+        debug!(
+            "FSMN-VAD produced {} frame probabilities",
+            probabilities.len()
+        );
         Ok(probabilities)
     }
 }

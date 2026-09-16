@@ -16,7 +16,6 @@ use crate::marblenet_frontend::{speech_probability, MarbleNetFrontend, N_MELS};
 pub struct MarbleNet {
     session: Session,
     frontend: MarbleNetFrontend,
-    debug: bool,
 }
 
 impl MarbleNet {
@@ -28,7 +27,7 @@ impl MarbleNet {
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
-        debug: bool,
+        _debug: bool,
     ) -> Result<Self> {
         let builder =
             |result: ort::session::builder::BuilderResult| -> anyhow::Result<SessionBuilder> {
@@ -47,7 +46,6 @@ impl MarbleNet {
         Ok(Self {
             session,
             frontend: MarbleNetFrontend::new(),
-            debug,
         })
     }
 
@@ -64,13 +62,11 @@ impl MarbleNet {
 
         let input = Array::from_shape_vec([1, N_MELS, feature_frames], features)?;
         let values = ort::inputs![Value::from_array(input)?];
-        if self.debug {
-            debug!(
-                "MarbleNet input: {:?}, dtype: {:?}",
-                values[0].shape(),
-                values[0].dtype()
-            );
-        }
+        debug!(
+            "MarbleNet input: {:?}, dtype: {:?}",
+            values[0].shape(),
+            values[0].dtype()
+        );
 
         let outputs = self.session.run(SessionInputs::ValueSlice::<1>(&values))?;
         let (shape, logits) = outputs
@@ -92,12 +88,10 @@ impl MarbleNet {
             .map(speech_probability)
             .collect::<Result<Vec<_>>>()?;
 
-        if self.debug {
-            debug!(
-                "MarbleNet produced {} frame probabilities",
-                probabilities.len()
-            );
-        }
+        debug!(
+            "MarbleNet produced {} frame probabilities",
+            probabilities.len()
+        );
         Ok(probabilities)
     }
 }

@@ -15,7 +15,6 @@ pub struct PulseVad {
     model: candle_onnx::onnx::ModelProto,
     frontend: PulseVadFrontend,
     device: candle_core::Device,
-    debug: bool,
 }
 
 impl PulseVad {
@@ -27,14 +26,13 @@ impl PulseVad {
     pub fn new(
         model_path: PathBuf,
         device: candle_core::Device,
-        debug: bool,
+        _debug: bool,
     ) -> anyhow::Result<Self> {
         let model = candle_onnx::read_file(model_path)?;
         Ok(Self {
             model,
             frontend: PulseVadFrontend::new(),
             device,
-            debug,
         })
     }
 }
@@ -63,9 +61,7 @@ impl VadModel for PulseVad {
         let logits = logits.flatten_all()?.to_vec1::<f32>()?;
 
         let probability = sigmoid(logits[1] - logits[0]);
-        if self.debug {
-            debug!("PulseVAD speech probability: {probability:.6}");
-        }
+        debug!("PulseVAD speech probability: {probability:.6}");
         Ok(probability)
     }
 }

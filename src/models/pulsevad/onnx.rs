@@ -19,7 +19,6 @@ use crate::{
 pub struct PulseVad {
     session: Session,
     frontend: PulseVadFrontend,
-    debug: bool,
 }
 
 impl PulseVad {
@@ -31,7 +30,7 @@ impl PulseVad {
     pub fn new(
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
-        debug: bool,
+        _debug: bool,
     ) -> anyhow::Result<Self> {
         let builder =
             |result: ort::session::builder::BuilderResult| -> anyhow::Result<SessionBuilder> {
@@ -50,7 +49,6 @@ impl PulseVad {
         Ok(Self {
             session,
             frontend: PulseVadFrontend::new(),
-            debug,
         })
     }
 }
@@ -65,13 +63,11 @@ impl VadModel for PulseVad {
         let input = Array::from_shape_vec([1, N_MELS, N_FRAMES], features)?;
         let values = ort::inputs![Value::from_array(input)?];
 
-        if self.debug {
-            debug!(
-                "PulseVAD input: {:?}, dtype: {:?}",
-                values[0].shape(),
-                values[0].dtype()
-            );
-        }
+        debug!(
+            "PulseVAD input: {:?}, dtype: {:?}",
+            values[0].shape(),
+            values[0].dtype()
+        );
 
         let outputs = self.session.run(SessionInputs::ValueSlice::<1>(&values))?;
         let (shape, logits) = outputs
@@ -90,9 +86,7 @@ impl VadModel for PulseVad {
             let exponential = difference.exp();
             exponential / (1.0 + exponential)
         };
-        if self.debug {
-            debug!("PulseVAD speech probability: {probability:.6}");
-        }
+        debug!("PulseVAD speech probability: {probability:.6}");
         Ok(probability)
     }
 }

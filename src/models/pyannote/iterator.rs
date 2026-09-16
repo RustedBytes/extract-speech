@@ -17,9 +17,7 @@ pub struct PyAnnoteVadIter {
 impl PyAnnoteVadIter {
     #[must_use]
     pub fn new(pyannote: PyAnnote, params: utils::VadParams) -> Self {
-        if params.debug {
-            debug!("PyAnnote vad_params: {params:?}");
-        }
+        debug!("PyAnnote vad_params: {params:?}");
 
         Self {
             pyannote,

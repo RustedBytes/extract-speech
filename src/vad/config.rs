@@ -11,6 +11,11 @@ pub struct VadParams {
     pub min_speech_duration_ms: usize,
     pub max_speech_duration_s: f32,
     pub sample_rate: usize,
+    /// Compatibility hint for applications with a debug mode.
+    ///
+    /// Diagnostic emission is controlled by the active [`log`] implementation
+    /// and its level filter. The bundled CLI maps `--debug` to a debug-level
+    /// filter when `RUST_LOG` is not set.
     pub debug: bool,
 }
 

@@ -33,9 +33,7 @@ pub struct VadIter<M> {
 impl<M: VadModel> VadIter<M> {
     #[must_use]
     pub fn new(model: M, params: utils::VadParams) -> Self {
-        if params.debug {
-            debug!("vad_params: {params:?}");
-        }
+        debug!("vad_params: {params:?}");
 
         Self {
             model,
@@ -120,7 +118,6 @@ struct Params {
     max_speech_samples: Option<usize>,
     min_silence_samples: usize,
     min_silence_samples_at_max_speech: usize,
-    debug: bool,
 }
 
 impl TryFrom<utils::VadParams> for Params {
@@ -186,7 +183,6 @@ impl Params {
             max_speech_samples,
             min_silence_samples,
             min_silence_samples_at_max_speech,
-            debug: value.debug,
         })
     }
 }
@@ -402,18 +398,16 @@ impl State {
     }
 
     fn log_transition(&self, speech_probability: f32, params: &Params, title: &str) {
-        if params.debug {
-            let sample = self
-                .current_sample
-                .saturating_sub(params.frame_size_samples);
-            debug!(
-                "[{:10}: {:.3} s ({:.3}) {:8}]",
-                title,
-                sample as f32 / params.sample_rate as f32,
-                speech_probability,
-                sample,
-            );
-        }
+        let sample = self
+            .current_sample
+            .saturating_sub(params.frame_size_samples);
+        debug!(
+            "[{:10}: {:.3} s ({:.3}) {:8}]",
+            title,
+            sample as f32 / params.sample_rate as f32,
+            speech_probability,
+            sample,
+        );
     }
 }
 

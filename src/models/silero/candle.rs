@@ -17,7 +17,6 @@ struct State {
 
 #[derive(Debug)]
 pub struct Silero {
-    vad_params: utils::VadParams,
     model: candle_onnx::onnx::ModelProto,
     sample_rate: Tensor,
     context_size: usize,
@@ -31,6 +30,7 @@ impl Silero {
     /// # Errors
     ///
     /// Returns an error if the model or its initial tensors cannot be created.
+    #[allow(clippy::needless_pass_by_value)] // Preserve the established public constructor API.
     pub fn new(
         vad_params: utils::VadParams,
         model_path: PathBuf,
@@ -66,7 +66,6 @@ impl Silero {
         };
 
         Ok(Self {
-            vad_params,
             model,
             sample_rate,
             context_size,
@@ -110,7 +109,7 @@ impl VadModel for Silero {
             ("sr".to_string(), self.sample_rate.clone()),
         ]);
 
-        if self.vad_params.debug {
+        if log::log_enabled!(log::Level::Debug) {
             for (k, v) in &inputs {
                 debug!(
                     "{} - {:?}: dtype: {:?}, len: {:?}",

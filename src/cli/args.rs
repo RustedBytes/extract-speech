@@ -148,7 +148,7 @@ pub(super) struct Args {
     #[arg(long, default_value_t = false)]
     pub(super) coreml: bool,
 
-    /// Debug mode
+    /// Use debug-level logging when `RUST_LOG` is unset
     #[arg(long, default_value_t = false)]
     pub(super) debug: bool,
 }

@@ -11,7 +11,6 @@ pub const FRAME_SAMPLES: usize = 256;
 
 pub struct TenVad {
     model: ten_vad_rs::TenVad,
-    debug: bool,
 }
 
 impl TenVad {
@@ -20,7 +19,7 @@ impl TenVad {
     /// # Errors
     ///
     /// Returns an error if the path is not UTF-8 or model initialization fails.
-    pub fn new(model_path: impl AsRef<Path>, debug: bool) -> anyhow::Result<Self> {
+    pub fn new(model_path: impl AsRef<Path>, _debug: bool) -> anyhow::Result<Self> {
         let model_path = model_path
             .as_ref()
             .to_str()
@@ -28,7 +27,7 @@ impl TenVad {
         let model = ten_vad_rs::TenVad::new(model_path, ten_vad_rs::TARGET_SAMPLE_RATE)
             .context("failed to initialize TEN VAD")?;
 
-        Ok(Self { model, debug })
+        Ok(Self { model })
     }
 }
 
@@ -53,9 +52,7 @@ impl VadModel for TenVad {
         );
         let probability = probability.clamp(0.0, 1.0);
 
-        if self.debug {
-            debug!("TEN VAD speech probability: {probability:.6}");
-        }
+        debug!("TEN VAD speech probability: {probability:.6}");
         Ok(probability)
     }
 }

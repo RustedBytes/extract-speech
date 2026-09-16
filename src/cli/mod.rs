@@ -5,13 +5,14 @@ mod processing;
 use anyhow::{Context, Result};
 use clap::Parser;
 use ort::ep::{CoreML, ExecutionProviderDispatch, TensorRT, CPU, CUDA};
+use tracing_subscriber::EnvFilter;
 
 use args::{Args, ModelInfo, Runtime};
 use processing::{process_folder, process_single_file};
 
 pub(crate) fn run() -> Result<()> {
     let args = Args::parse();
-    tracing_subscriber::fmt::init();
+    init_logging(args.debug)?;
 
     if let Some(info) = args.print_model_info {
         return print_model_info(&args.model_path, info);
@@ -34,6 +35,16 @@ pub(crate) fn run() -> Result<()> {
     } else {
         unreachable!("validated input source")
     }
+}
+
+fn init_logging(debug: bool) -> Result<()> {
+    let default_filter = if debug { "debug" } else { "info" };
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .try_init()
+        .map_err(|error| anyhow::anyhow!("failed to initialize logging: {error}"))
 }
 
 fn execution_providers(args: &Args) -> Vec<ExecutionProviderDispatch> {

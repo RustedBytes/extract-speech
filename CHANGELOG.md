@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Route model diagnostics through the `log` facade and use logger level filters instead of per-model debug switches while preserving the existing compatibility parameters.
+
 ### Fixed
 
 - Anchor crates.io package include patterns to the repository root so ignored virtual-environment files are never packaged.

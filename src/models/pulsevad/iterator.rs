@@ -93,13 +93,11 @@ impl<M: VadModel> PulseVadIter<M> {
                 .probability(&samples[start..start + WINDOW_SAMPLES])?;
             let is_speech = probability >= self.params.threshold;
 
-            if self.params.debug {
-                debug!(
-                    "[PulseVAD: {:.3} s ({probability:.3}) {}]",
-                    start as f32 / self.params.sample_rate as f32,
-                    if is_speech { "speech" } else { "silence" }
-                );
-            }
+            debug!(
+                "[PulseVAD: {:.3} s ({probability:.3}) {}]",
+                start as f32 / self.params.sample_rate as f32,
+                if is_speech { "speech" } else { "silence" }
+            );
 
             if is_speech {
                 let segment_start = *current_start.get_or_insert(start);

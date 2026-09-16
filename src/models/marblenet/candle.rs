@@ -12,7 +12,6 @@ pub struct MarbleNet {
     model: candle_onnx::onnx::ModelProto,
     frontend: MarbleNetFrontend,
     device: candle_core::Device,
-    debug: bool,
 }
 
 impl MarbleNet {
@@ -21,13 +20,12 @@ impl MarbleNet {
     /// # Errors
     ///
     /// Returns an error if the ONNX model cannot be read.
-    pub fn new(model_path: PathBuf, device: candle_core::Device, debug: bool) -> Result<Self> {
+    pub fn new(model_path: PathBuf, device: candle_core::Device, _debug: bool) -> Result<Self> {
         let model = candle_onnx::read_file(model_path)?;
         Ok(Self {
             model,
             frontend: MarbleNetFrontend::new(),
             device,
-            debug,
         })
     }
 
@@ -43,13 +41,11 @@ impl MarbleNet {
         }
 
         let input = Tensor::from_vec(features, (1, N_MELS, feature_frames), &self.device)?;
-        if self.debug {
-            debug!(
-                "MarbleNet input: {:?}, dtype: {:?}",
-                input.shape(),
-                input.dtype()
-            );
-        }
+        debug!(
+            "MarbleNet input: {:?}, dtype: {:?}",
+            input.shape(),
+            input.dtype()
+        );
         let outputs = candle_onnx::simple_eval(
             &self.model,
             HashMap::from_iter([("audio_signal".to_string(), input)]),
@@ -70,12 +66,10 @@ impl MarbleNet {
             .map(speech_probability)
             .collect::<Result<Vec<_>>>()?;
 
-        if self.debug {
-            debug!(
-                "MarbleNet produced {} frame probabilities",
-                probabilities.len()
-            );
-        }
+        debug!(
+            "MarbleNet produced {} frame probabilities",
+            probabilities.len()
+        );
         Ok(probabilities)
     }
 }

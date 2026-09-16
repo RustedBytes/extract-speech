@@ -8,14 +8,14 @@ Use the default features to enable both inference engines:
 
 ```toml
 [dependencies]
-extract-speech = "0.6"
+extract-speech = "0.7"
 ```
 
 Select one engine when a smaller dependency graph is preferred:
 
 ```toml
 [dependencies]
-extract-speech = { version = "0.6", default-features = false, features = ["candle"] }
+extract-speech = { version = "0.7", default-features = false, features = ["candle"] }
 ```
 
 The available features are:
@@ -136,6 +136,13 @@ The automatic runtime bundle is the upstream CPU distribution. For CUDA or Tenso
 | NVIDIA Frame-VAD MarbleNet | FP32 | FP32 and INT8 |
 
 See [Models and runtimes](models-and-runtimes.md) for compatible model files, pinned downloads used by the integration tests, and model-specific licensing notes.
+
+## Logging
+
+The library emits diagnostics through the [`log`](https://docs.rs/log) facade
+and does not install a logger or choose a level filter. Applications can use
+any compatible logger implementation and enable the `Debug` level to inspect
+model inputs, probabilities, and segmentation transitions.
 
 ## Lower-level API
 

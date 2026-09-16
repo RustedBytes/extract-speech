@@ -15,7 +15,6 @@ use crate::utils;
 
 #[derive(Debug)]
 pub struct PyAnnote {
-    vad_params: utils::VadParams,
     session: Session,
 }
 
@@ -26,7 +25,7 @@ impl PyAnnote {
     ///
     /// Returns an error if the session cannot be configured or the model cannot be loaded.
     pub fn new(
-        vad_params: utils::VadParams,
+        _vad_params: utils::VadParams,
         execution_providers: Vec<ExecutionProviderDispatch>,
         model_path: PathBuf,
     ) -> Result<Self, anyhow::Error> {
@@ -44,10 +43,7 @@ impl PyAnnote {
             builder(session_builder.with_execution_providers(execution_providers))?;
         let session = session_builder.commit_from_file(model_path)?;
 
-        Ok(Self {
-            vad_params,
-            session,
-        })
+        Ok(Self { session })
     }
 
     pub fn reset(&mut self) {
@@ -69,13 +65,11 @@ impl PyAnnote {
 
         let values = ort::inputs![Value::from_array(input_tensor.into_dyn())?];
 
-        if self.vad_params.debug {
-            debug!(
-                "PyAnnote input: {:?}, dtype: {:?}",
-                values[0].shape(),
-                values[0].dtype()
-            );
-        }
+        debug!(
+            "PyAnnote input: {:?}, dtype: {:?}",
+            values[0].shape(),
+            values[0].dtype()
+        );
 
         let inputs = SessionInputs::ValueSlice::<1>(&values);
         let outputs = self.session.run(inputs)?;
@@ -85,9 +79,7 @@ impl PyAnnote {
             .context("PyAnnote model did not return a 'logits' tensor")?;
         let (shape, data) = logits.try_extract_tensor()?.to_owned();
 
-        if self.vad_params.debug {
-            debug!("PyAnnote output shape: {shape:?}");
-        }
+        debug!("PyAnnote output shape: {shape:?}");
 
         let shape_usize: Vec<usize> = shape
             .iter()

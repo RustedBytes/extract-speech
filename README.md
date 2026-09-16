@@ -28,7 +28,7 @@ Add the library to your project:
 
 ```toml
 [dependencies]
-extract-speech = "0.6"
+extract-speech = "0.7"
 ```
 
 Load a Silero model through Candle and run inference on normalized mono 16 kHz samples:

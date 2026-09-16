@@ -15,7 +15,6 @@ use crate::{utils, vad_iter::VadModel};
 
 #[derive(Debug)]
 pub struct Silero {
-    vad_params: utils::VadParams,
     frame_size_samples: usize,
     session: Session,
     sample_rate: ArrayBase<OwnedRepr<i64>, Dim<[usize; 1]>>,
@@ -29,6 +28,7 @@ impl Silero {
     /// # Errors
     ///
     /// Returns an error if the session or its initial state cannot be created.
+    #[allow(clippy::needless_pass_by_value)] // Preserve the established public constructor API.
     pub fn new(
         vad_params: utils::VadParams,
         execution_providers: Vec<ExecutionProviderDispatch>,
@@ -72,7 +72,6 @@ impl Silero {
         let context = ArrayD::<f32>::zeros([1, context_size].as_slice());
 
         Ok(Self {
-            vad_params,
             frame_size_samples,
             session,
             sample_rate,
@@ -116,23 +115,21 @@ impl VadModel for Silero {
             Value::from_array(self.sample_rate.clone())?,
         ];
 
-        if self.vad_params.debug {
-            debug!(
-                "input: {:?}, dtype: {:?}",
-                values[0].shape(),
-                values[0].dtype()
-            );
-            debug!(
-                "state: {:?}, dtype: {:?}",
-                values[1].shape(),
-                values[1].dtype()
-            );
-            debug!(
-                "sample_rate: {:?}, dtype: {:?}",
-                values[2].shape(),
-                values[2].dtype()
-            );
-        }
+        debug!(
+            "input: {:?}, dtype: {:?}",
+            values[0].shape(),
+            values[0].dtype()
+        );
+        debug!(
+            "state: {:?}, dtype: {:?}",
+            values[1].shape(),
+            values[1].dtype()
+        );
+        debug!(
+            "sample_rate: {:?}, dtype: {:?}",
+            values[2].shape(),
+            values[2].dtype()
+        );
 
         let inputs = SessionInputs::ValueSlice::<3>(&values);
         let outputs = self.session.run(inputs)?;
