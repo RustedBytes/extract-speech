@@ -8,16 +8,16 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
-          version: "23.x"
+          version: "36.x"
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -33,7 +33,7 @@ jobs:
           path: target/release/extract-speech
 
       - name: Create GitHub Release & Upload Asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: target/release/extract-speech
         env:

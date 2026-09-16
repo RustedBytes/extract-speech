@@ -11,10 +11,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get number of CPU cores
-        uses: SimenB/github-actions-cpu-cores@v2
+        uses: SimenB/github-actions-cpu-cores@v3
         id: cpu-cores
 
       - name: Check number of CPU cores
@@ -23,9 +23,9 @@ jobs:
 
       - name: Install wild
         run: |
-          wget "https://github.com/davidlattimore/wild/releases/download/0.5.0/wild-linker-x86_64-unknown-linux-gnu.tar.xz"
-          tar xf wild-linker-x86_64-unknown-linux-gnu.tar.xz
-          mv wild-linker-x86_64-unknown-linux-gnu/wild /usr/local/bin/wild
+          wget "https://github.com/davidlattimore/wild/releases/download/0.10.0/wild-linker-0.10.0-x86_64-unknown-linux-gnu.tar.gz"
+          tar xf wild-linker-0.10.0-x86_64-unknown-linux-gnu.tar.gz
+          mv wild-linker-0.10.0-x86_64-unknown-linux-gnu/wild /usr/local/bin/wild
           chmod +x /usr/local/bin/wild
           /usr/local/bin/wild --version
 
@@ -35,7 +35,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
-          version: "23.x"
+          version: "36.x"
 
       - name: Build
         run: cargo build
