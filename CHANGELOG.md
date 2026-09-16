@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- TEN VAD support through ONNX Runtime, including its reference feature frontend, recurrent state, documentation, and revision-pinned model integration tests.
+- NVIDIA Frame-VAD MarbleNet support for FP32 models through Candle and ONNX Runtime and INT8 models through ONNX Runtime, including a NeMo-compatible frontend and revision-pinned integration tests.
+
 ## [0.6.0] - 2026-09-16
 
 ### Added

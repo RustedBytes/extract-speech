@@ -12,6 +12,9 @@
 | PyAnnote segmentation | Not supported | Supported |
 | FunASR FSMN-VAD FP32 | Not supported | Supported |
 | FunASR FSMN-VAD INT8 | Not supported | Supported |
+| TEN VAD | Not supported | Supported |
+| NVIDIA Frame-VAD MarbleNet FP32 | Supported | Supported |
+| NVIDIA Frame-VAD MarbleNet INT8 | Not supported | Supported |
 
 The internal VAD sample rate is 16 kHz for every backend.
 
@@ -122,6 +125,57 @@ extract-speech \
 
 The quantized `model_quant.onnx` file is used in the same way. Keep `vad.mvn` (or the legacy name `am.mvn`) in the same directory as the selected ONNX file. `extract-speech` implements the model's 80-bin Kaldi filterbank, five-frame LFR stacking, CMVN, and recurrent FSMN cache inputs internally.
 
+## TEN VAD
+
+[TEN VAD](https://huggingface.co/TEN-framework/ten-vad) is available through ONNX Runtime. Download the official ONNX model:
+
+```bash
+mkdir -p models/ten-vad
+curl -L \
+  https://huggingface.co/TEN-framework/ten-vad/resolve/main/src/onnx_model/ten-vad.onnx \
+  -o models/ten-vad/ten-vad.onnx
+```
+
+Run it with the reference `0.5` threshold:
+
+```bash
+extract-speech \
+  --runtime onnxruntime \
+  --vad-model ten \
+  --dylib-path /path/to/libonnxruntime.so \
+  --model-path models/ten-vad/ten-vad.onnx \
+  --threshold 0.5 \
+  --process-audio input.wav
+```
+
+TEN VAD consumes mono 16 kHz audio in 256-sample (16 ms) frames. `extract-speech` supplies its reference pre-emphasis, STFT, 40-bin mel, LPC pitch, three-frame context, and recurrent-state processing. The model is distributed under TEN VAD's license, which adds conditions to Apache 2.0; review the upstream [`LICENSE`](https://huggingface.co/TEN-framework/ten-vad/blob/main/LICENSE) before deployment.
+
+## NVIDIA Frame-VAD MarbleNet
+
+[Frame-VAD Multilingual MarbleNet v2.0](https://huggingface.co/nvidia/Frame_VAD_Multilingual_MarbleNet_v2.0) is a compact, frame-based multilingual VAD. The FP32 and INT8 ONNX exports are available from the revision-pinned [vadonnx conversion repository](https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx):
+
+```bash
+mkdir -p models/marblenet
+curl -L \
+  https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/main/marblenet.onnx \
+  -o models/marblenet/marblenet.onnx
+```
+
+Run the FP32 model with Candle:
+
+```bash
+extract-speech \
+  --runtime candle \
+  --vad-model marblenet \
+  --model-path models/marblenet/marblenet.onnx \
+  --threshold 0.5 \
+  --process-audio input.wav
+```
+
+ONNX Runtime accepts both `marblenet.onnx` and `marblenet_int8.onnx`. Select it with `--runtime onnxruntime` and provide `--dylib-path` as shown for the other ONNX Runtime models.
+
+The model consumes 80-bin log-mel features and produces two-class logits at a 20 ms resolution. `extract-speech` implements the NeMo pre-emphasis, centered 512-point STFT, non-periodic Hann window, Slaney-normalized mel filterbank, and stable softmax internally. The model and its exports use the [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/); review it before deployment.
+
 ## ONNX Runtime
 
 The ONNX Runtime backend loads its dynamic library at startup. Download a package for the target platform from the [ONNX Runtime releases](https://github.com/microsoft/onnxruntime/releases), extract it, and pass the library itself to `--dylib-path`.
@@ -173,7 +227,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ and FSMN-VAD models. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ, FSMN-VAD, TEN VAD, and MarbleNet INT8 models. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

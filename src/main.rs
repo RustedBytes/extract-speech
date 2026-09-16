@@ -15,6 +15,10 @@ mod audio;
 mod fsmn_vad_frontend;
 mod fsmn_vad_iter;
 mod fsmn_vad_ort;
+mod marblenet;
+mod marblenet_frontend;
+mod marblenet_iter;
+mod marblenet_ort;
 mod opus;
 mod pulsevad;
 mod pulsevad_frontend;
@@ -25,6 +29,7 @@ mod pyannote_vad_ort;
 mod resampler;
 mod silero_v5;
 mod silero_v5_ort;
+mod ten_vad_ort;
 pub(crate) mod utils;
 mod vad_iter;
 
@@ -69,6 +74,10 @@ enum VadModel {
     PulseVad,
     #[value(name = "fsmn", alias = "fsmn-vad")]
     Fsmn,
+    #[value(name = "ten", alias = "ten-vad")]
+    Ten,
+    #[value(name = "marblenet", alias = "marble-net")]
+    MarbleNet,
 }
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, ValueEnum)]
@@ -232,6 +241,11 @@ fn collect_audio_files(folder_path: &std::path::Path) -> Result<Vec<PathBuf>> {
 
 fn make_vad_params(args: &Args) -> utils::VadParams {
     utils::VadParams {
+        frame_size: if args.vad_model == VadModel::Ten {
+            16
+        } else {
+            utils::VadParams::default().frame_size
+        },
         sample_rate: utils::VAD_SAMPLE_RATE,
         threshold: args.threshold,
         min_speech_duration_ms: if args.vad_model == VadModel::PulseVad {
@@ -328,6 +342,29 @@ fn process_single_file(
                 VadModel::Fsmn => Err(anyhow::anyhow!(
                     "FSMN-VAD is only supported with ONNX Runtime. Use --runtime onnxruntime"
                 )),
+                VadModel::Ten => Err(anyhow::anyhow!(
+                    "TEN VAD is only supported with ONNX Runtime. Use --runtime onnxruntime"
+                )),
+                VadModel::MarbleNet => {
+                    let start = std::time::Instant::now();
+                    let marblenet =
+                        marblenet::MarbleNet::new(args.model_path.clone(), device, args.debug)?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator =
+                        marblenet_iter::MarbleNetIter::new(marblenet, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
                 VadModel::PulseVad => {
                     let start = std::time::Instant::now();
                     let pulsevad =
@@ -446,6 +483,47 @@ fn process_single_file(
                         compute_time.as_secs_f64(),
                     )
                 }
+                VadModel::Ten => {
+                    let start = std::time::Instant::now();
+                    let ten_vad = ten_vad_ort::TenVad::new(args.model_path.clone(), args.debug)?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator = vad_iter::VadIter::new(ten_vad, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
+                VadModel::MarbleNet => {
+                    let start = std::time::Instant::now();
+                    let marblenet = marblenet_ort::MarbleNet::new(
+                        execution_providers,
+                        args.model_path.clone(),
+                        args.debug,
+                    )?;
+                    info!("Loaded the model in: {:?}", start.elapsed());
+
+                    let start = std::time::Instant::now();
+                    let mut vad_iterator =
+                        marblenet_iter::MarbleNetIter::new(marblenet, vad_params);
+                    let speeches_result = vad_iterator.process(&process_samples)?;
+                    let compute_time = start.elapsed();
+                    info!("Inference time: {:?}", compute_time);
+
+                    write_results(
+                        args,
+                        speeches_result,
+                        output_samples,
+                        compute_time.as_secs_f64(),
+                    )
+                }
             }
         }
     }
@@ -542,6 +620,45 @@ fn process_folder(
                         VadModel::Fsmn => Err(anyhow::anyhow!(
                             "FSMN-VAD is only supported with ONNX Runtime"
                         )),
+                        VadModel::Ten => Err(anyhow::anyhow!(
+                            "TEN VAD is only supported with ONNX Runtime"
+                        )),
+                        VadModel::MarbleNet => {
+                            let marblenet = marblenet::MarbleNet::new(
+                                args.model_path.clone(),
+                                device,
+                                args.debug,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                marblenet_iter::MarbleNetIter::new(marblenet, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
                         VadModel::PulseVad => {
                             let pulsevad = pulsevad::PulseVad::new(
                                 args.model_path.clone(),
@@ -733,6 +850,75 @@ fn process_folder(
                             info!("Completed: {} in {:?}", file_stem, compute_time);
                             Ok(())
                         }
+                        VadModel::Ten => {
+                            let ten_vad =
+                                ten_vad_ort::TenVad::new(args.model_path.clone(), args.debug)?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                vad_iter::VadIter::new(ten_vad, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
+                        VadModel::MarbleNet => {
+                            let marblenet = marblenet_ort::MarbleNet::new(
+                                execution_providers.clone(),
+                                args.model_path.clone(),
+                                args.debug,
+                            )?;
+
+                            let start = std::time::Instant::now();
+                            let mut vad_iterator =
+                                marblenet_iter::MarbleNetIter::new(marblenet, vad_params.clone());
+                            let speeches_result = vad_iterator.process(&process_samples)?;
+                            let compute_time = start.elapsed();
+
+                            let mut file_args = args.clone();
+                            file_args.output = file_output_path.clone();
+                            file_args.metadata = args.metadata.as_ref().map(|m| {
+                                let metadata_stem =
+                                    m.file_stem().and_then(|s| s.to_str()).unwrap_or("metadata");
+                                let metadata_ext =
+                                    m.extension().and_then(|e| e.to_str()).unwrap_or("json");
+                                output_base.join(format!(
+                                    "{}_{}.{}",
+                                    metadata_stem, file_stem, metadata_ext
+                                ))
+                            });
+
+                            write_results(
+                                file_args,
+                                speeches_result,
+                                &process_samples,
+                                compute_time.as_secs_f64(),
+                            )?;
+
+                            info!("Completed: {} in {:?}", file_stem, compute_time);
+                            Ok(())
+                        }
                     }
                 }
             }
@@ -782,17 +968,6 @@ fn main() -> Result<()> {
     );
     u32::try_from(args.sample_rate).context("sample rate exceeds u32")?;
 
-    if args.runtime == Runtime::Onnxruntime {
-        let dylib_path = args
-            .dylib_path
-            .as_deref()
-            .context("--dylib-path is required for ONNX Runtime")?;
-        let dylib_path = dylib_path
-            .to_str()
-            .context("ONNX Runtime library path is not valid UTF-8")?;
-        ort::init_from(dylib_path)?.commit();
-    }
-
     let mut execution_providers: Vec<ExecutionProviderDispatch> = vec![CPU::default().build()];
 
     if args.cuda {
@@ -805,6 +980,19 @@ fn main() -> Result<()> {
 
     if args.trt {
         execution_providers.insert(0, TensorRT::default().build());
+    }
+
+    if args.runtime == Runtime::Onnxruntime {
+        let dylib_path = args
+            .dylib_path
+            .as_deref()
+            .context("--dylib-path is required for ONNX Runtime")?;
+        let dylib_path = dylib_path
+            .to_str()
+            .context("ONNX Runtime library path is not valid UTF-8")?;
+        ort::init_from(dylib_path)?
+            .with_execution_providers(execution_providers.clone())
+            .commit();
     }
 
     // Process single file or folder
@@ -1072,6 +1260,39 @@ mod tests {
         .unwrap();
 
         assert_eq!(args.vad_model, VadModel::Fsmn);
+    }
+
+    #[test]
+    fn ten_vad_is_an_accepted_model_name() {
+        let args = Args::try_parse_from([
+            "extract-speech",
+            "--vad-model",
+            "ten-vad",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ])
+        .unwrap();
+
+        assert_eq!(args.vad_model, VadModel::Ten);
+        assert_eq!(make_vad_params(&args).frame_size, 16);
+    }
+
+    #[test]
+    fn marblenet_is_an_accepted_model_name() {
+        let args = Args::try_parse_from([
+            "extract-speech",
+            "--vad-model",
+            "marble-net",
+            "--model-path",
+            "model.onnx",
+            "--process-audio",
+            "audio.wav",
+        ])
+        .unwrap();
+
+        assert_eq!(args.vad_model, VadModel::MarbleNet);
     }
 
     #[test]

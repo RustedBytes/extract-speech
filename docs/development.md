@@ -15,6 +15,11 @@
 | `src/pulsevad_iter.rs` | PulseVAD overlapping-window segmentation |
 | `src/pyannote_vad_ort.rs` | ONNX Runtime PyAnnote inference |
 | `src/pyannote_vad_iter.rs` | PyAnnote logits-to-segments processing |
+| `src/ten_vad_ort.rs` | ONNX Runtime TEN VAD adapter |
+| `src/marblenet_frontend.rs` | NeMo-compatible MarbleNet log-mel frontend |
+| `src/marblenet.rs` | Candle implementation of MarbleNet |
+| `src/marblenet_ort.rs` | ONNX Runtime implementation of MarbleNet |
+| `src/marblenet_iter.rs` | MarbleNet frame probabilities to segments |
 | `src/resampler.rs` | sample-rate conversion |
 | `src/opus.rs` | Ogg Opus encoding |
 | `src/utils.rs` | shared VAD configuration and timestamps |
@@ -67,14 +72,14 @@ just test-models
 # or: ./scripts/test-models.sh
 ```
 
-The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, and FunASR FSMN-VAD ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
+The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, FunASR FSMN-VAD, TEN VAD, and MarbleNet ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It runs every supported model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures, then validates each WAV output and metadata file.
 
 ## Design notes
 
 - VAD always runs on mono, 16 kHz samples. `--sample-rate` applies to final output.
 - Model state is reset for every input.
-- `VadModel` in `src/vad_iter.rs` is the common probability-inference boundary used by the Silero and PulseVAD backends.
-- PyAnnote and FSMN-VAD use dedicated iterators for their frame-level outputs and specialized frontends.
+- `VadModel` in `src/vad_iter.rs` is the common probability-inference boundary used by the Silero, PulseVAD, and TEN VAD backends.
+- PyAnnote, FSMN-VAD, and MarbleNet use dedicated iterators for their frame-level outputs and specialized frontends.
 - Errors at file, decoder, model, resampler, and writer boundaries should include enough context to identify the failing input.
 - Production code should propagate recoverable errors instead of panicking.
 - Behavioral fixes should include focused unit or regression tests.

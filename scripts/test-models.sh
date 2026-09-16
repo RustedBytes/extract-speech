@@ -54,6 +54,9 @@ readonly PULSEVAD_INT8_MODEL="$CACHE_DIR/pulsevad-2.1k-int8.onnx"
 readonly FSMN_MODEL="$CACHE_DIR/model.onnx"
 readonly FSMN_INT8_MODEL="$CACHE_DIR/model_quant.onnx"
 readonly FSMN_CMVN="$CACHE_DIR/vad.mvn"
+readonly TEN_MODEL="$CACHE_DIR/ten-vad.onnx"
+readonly MARBLENET_MODEL="$CACHE_DIR/marblenet.onnx"
+readonly MARBLENET_INT8_MODEL="$CACHE_DIR/marblenet_int8.onnx"
 readonly ONNXRUNTIME_ARCHIVE="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
 readonly ONNXRUNTIME_DIR="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}"
 readonly ONNXRUNTIME_LIBRARY="$ONNXRUNTIME_DIR/lib/libonnxruntime.so"
@@ -79,6 +82,18 @@ download_file \
     "https://huggingface.co/funasr/fsmn-vad-onnx/resolve/f6e9fbb4cefa7397216c763f21307993f147f585/vad.mvn" \
     "6820fef9687708c4fc3fab2530179c8fcea6262daa25514380056cd8f6eb1754" \
     "$FSMN_CMVN"
+download_file \
+    "https://huggingface.co/TEN-framework/ten-vad/resolve/bda8ffc78b1846c5c7cbd38f04e52deff49de707/src/onnx_model/ten-vad.onnx" \
+    "e10b98a0cab1c98e847fbdda14cb3d45a38336d47535a3f63a0fb6c4e0f4cdf4" \
+    "$TEN_MODEL"
+download_file \
+    "https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/e8786fe74e055954901eb553cc9c3145323981cc/marblenet.onnx" \
+    "4ad3364be94d462b5fd4fa39910c24967dbb9dba436e27bcff7a88359515e491" \
+    "$MARBLENET_MODEL"
+download_file \
+    "https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/e8786fe74e055954901eb553cc9c3145323981cc/marblenet_int8.onnx" \
+    "9c4462323f9b576fd5e581d3c86b9b9b513468d18a79bcdcd3a2bcbcaab02699" \
+    "$MARBLENET_INT8_MODEL"
 
 # PulseVAD has no Hugging Face repository, so use its official pinned release artifacts.
 download_file \
@@ -170,6 +185,10 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "pyannote-onnxruntime" "onnxruntime" "pyannote" "$PYANNOTE_MODEL" "$audio_file"
     run_case "fsmn-onnxruntime-fp32" "onnxruntime" "fsmn" "$FSMN_MODEL" "$audio_file"
     run_case "fsmn-onnxruntime-int8" "onnxruntime" "fsmn" "$FSMN_INT8_MODEL" "$audio_file"
+    run_case "ten-onnxruntime" "onnxruntime" "ten" "$TEN_MODEL" "$audio_file"
+    run_case "marblenet-candle-fp32" "candle" "marblenet" "$MARBLENET_MODEL" "$audio_file"
+    run_case "marblenet-onnxruntime-fp32" "onnxruntime" "marblenet" "$MARBLENET_MODEL" "$audio_file"
+    run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "All 24 model integration cases passed."
+echo "All 36 model integration cases passed."
