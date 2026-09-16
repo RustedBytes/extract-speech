@@ -31,5 +31,7 @@ nerd.wav
 
 target/
 .venv/
+__pycache__/
+*.py[cod]
 
 dist/
