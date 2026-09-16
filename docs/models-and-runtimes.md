@@ -20,6 +20,15 @@ The internal VAD sample rate is 16 kHz for every backend.
 
 ## Automatic downloads
 
+CLI users can cache any supported model or the compatible CPU ONNX Runtime distribution directly:
+
+```bash
+extract-speech download silero
+extract-speech download onnxruntime
+```
+
+Use `extract-speech download all` to cache every model variant and `--cache-dir <PATH>` to override the default cache location. Each invocation prints the downloaded model or runtime library path.
+
 Library users can download a complete, revision-pinned model bundle with `AssetManager`. Downloads are SHA-256 verified and reused from a persistent cache:
 
 ```rust,no_run

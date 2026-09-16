@@ -112,7 +112,7 @@ fn detect(
     }
 
     let load_start = Instant::now();
-    let builder = Detector::builder(args.model_path.clone())
+    let builder = Detector::builder(args.model_path()?)
         .model(args.vad_model.library_model())
         .runtime(args.runtime.library_runtime())
         .parameters(args.vad_params())

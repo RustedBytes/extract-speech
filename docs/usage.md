@@ -1,6 +1,24 @@
 # Usage
 
-Every operation requires an ONNX model through `--model-path`. Audio processing additionally requires exactly one of `--process-audio` and `--process-folder`.
+Audio processing requires an ONNX model through `--model-path` and exactly one of `--process-audio` and `--process-folder`.
+
+## Download models and ONNX Runtime
+
+The `download` subcommand caches revision-pinned, checksum-verified assets and prints the path to each downloaded model graph:
+
+```bash
+extract-speech download silero
+extract-speech download fsmn-int8 --cache-dir ./model-cache
+extract-speech download all
+```
+
+Download the compatible CPU ONNX Runtime distribution separately. The printed path can be passed directly to `--dylib-path`:
+
+```bash
+extract-speech download onnxruntime
+```
+
+Run `extract-speech download --help` for the full model-variant list. Existing valid cache files are reused. The default cache honors `EXTRACT_SPEECH_CACHE_DIR`, then uses the platform cache directory described in [Models and runtimes](models-and-runtimes.md).
 
 ## Process one file
 
@@ -150,9 +168,11 @@ RUST_LOG=extract_speech=debug extract-speech \
 
 ## CLI reference
 
+The processing interface remains available as top-level options. Downloads use `extract-speech download <ASSET> [--cache-dir <PATH>]`.
+
 | Option | Meaning | Default |
 | --- | --- | --- |
-| `--model-path <PATH>` | ONNX model path; always required | — |
+| `--model-path <PATH>` | ONNX model path; required for processing and inspection | — |
 | `--runtime <RUNTIME>` | `candle` or `onnxruntime` | `candle` |
 | `--vad-model <MODEL>` | `silero`, `pulsevad`, `pyannote`, `fsmn`, `ten`, or `marblenet` | `silero` |
 | `--dylib-path <PATH>` | ONNX Runtime dynamic library; required for `onnxruntime` | — |

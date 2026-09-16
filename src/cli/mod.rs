@@ -1,4 +1,5 @@
 mod args;
+mod download;
 mod output;
 mod processing;
 
@@ -7,15 +8,19 @@ use clap::Parser;
 use ort::ep::{CoreML, ExecutionProviderDispatch, TensorRT, CPU, CUDA};
 use tracing_subscriber::EnvFilter;
 
-use args::{Args, ModelInfo, Runtime};
+use args::{Args, Command, ModelInfo, Runtime};
 use processing::{process_folder, process_single_file};
 
 pub(crate) fn run() -> Result<()> {
     let args = Args::parse();
     init_logging(args.debug)?;
 
+    if let Some(Command::Download(download_args)) = &args.command {
+        return download::download(download_args);
+    }
+
     if let Some(info) = args.print_model_info {
-        return print_model_info(&args.model_path, info);
+        return print_model_info(args.model_path()?, info);
     }
     args.validate()?;
 

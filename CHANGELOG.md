@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-09-16
+
+### Added
+
+- Exposed checksum-verified model and ONNX Runtime downloads through the CLI `download` subcommand.
+
 ## [0.7.1] - 2026-09-16
 
 ### Changed
@@ -143,7 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/RustedBytes/extract-speech/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/RustedBytes/extract-speech/compare/v0.5.4...v0.6.0

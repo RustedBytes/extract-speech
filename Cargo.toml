@@ -1,6 +1,6 @@
 [package]
 name = "extract-speech"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 authors = ["Yehor Smoliakov"]
 description = "Voice activity detection inference for Silero, PulseVAD, PyAnnote, FSMN, TEN VAD, and MarbleNet"
@@ -55,6 +55,7 @@ python = [
 ]
 cli = [
     "candle",
+    "download",
     "onnxruntime",
     "dep:byteorder",
     "dep:chrono",

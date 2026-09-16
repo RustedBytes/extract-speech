@@ -90,20 +90,14 @@ Install Rust and Protocol Buffers first; see the [installation guide](docs/insta
 git clone https://github.com/RustedBytes/extract-speech.git
 cd extract-speech
 cargo build --release --features cli
-
-mkdir -p models
-curl -L \
-  https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx \
-  -o models/silero-vad-v5.onnx
-echo 'a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808  models/silero-vad-v5.onnx' \
-  | sha256sum --check
+./target/release/extract-speech download silero --cache-dir .cache/extract-speech
 ```
 
 Extract each detected speech region to a WAV file:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path .cache/extract-speech/models/silero-v5/model.onnx \
   --process-audio input.wav \
   --output output
 ```
@@ -112,7 +106,7 @@ Create one file with the detected regions joined together:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path .cache/extract-speech/models/silero-v5/model.onnx \
   --process-audio input.wav \
   --output-type concatenated \
   --output speech.wav
@@ -174,7 +168,7 @@ See the [development guide](docs/development.md) for the code layout and project
   month = sep,
   title = {{extract-speech: Extract speech from audio files using Voice Activity Detection models}},
   url = {https://github.com/RustedBytes/extract-speech},
-  version = {0.7.1},
+  version = {0.7.2},
   year = {2026}
 }
 ```

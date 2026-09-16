@@ -1,8 +1,72 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
-use extract_speech::{Model, Runtime as LibraryRuntime, VadParams, VAD_SAMPLE_RATE};
+use clap::{Parser, Subcommand, ValueEnum};
+use extract_speech::{
+    download::ModelAsset, Model, Runtime as LibraryRuntime, VadParams, VAD_SAMPLE_RATE,
+};
+
+#[derive(Clone, Debug, PartialEq, Eq, Subcommand)]
+pub(super) enum Command {
+    /// Download a checksum-verified model bundle or ONNX Runtime
+    Download(DownloadArgs),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, clap::Args)]
+pub(super) struct DownloadArgs {
+    /// Asset to download
+    #[arg(value_enum)]
+    pub(super) asset: DownloadAsset,
+
+    /// Cache directory (defaults to `EXTRACT_SPEECH_CACHE_DIR` or the platform cache)
+    #[arg(long)]
+    pub(super) cache_dir: Option<PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub(super) enum DownloadAsset {
+    /// Every supported model bundle
+    #[value(alias = "all-models")]
+    All,
+    /// Compatible CPU ONNX Runtime distribution
+    #[value(name = "onnxruntime", alias = "onnx-runtime", alias = "ort")]
+    OnnxRuntime,
+    #[value(name = "silero-v5", alias = "silero")]
+    SileroV5,
+    #[value(name = "pyannote-segmentation", alias = "pyannote")]
+    PyAnnoteSegmentation,
+    #[value(name = "pulsevad-fp32", alias = "pulsevad")]
+    PulseVadFp32,
+    #[value(name = "pulsevad-int8")]
+    PulseVadInt8,
+    #[value(name = "fsmn-vad-fp32", alias = "fsmn")]
+    FsmnVadFp32,
+    #[value(name = "fsmn-vad-int8", alias = "fsmn-int8")]
+    FsmnVadInt8,
+    #[value(name = "ten-vad", alias = "ten")]
+    TenVad,
+    #[value(name = "marblenet-fp32", alias = "marblenet", alias = "marble-net")]
+    MarbleNetFp32,
+    #[value(name = "marblenet-int8", alias = "marble-net-int8")]
+    MarbleNetInt8,
+}
+
+impl DownloadAsset {
+    pub(super) fn model_asset(self) -> Option<ModelAsset> {
+        match self {
+            Self::All | Self::OnnxRuntime => None,
+            Self::SileroV5 => Some(ModelAsset::SileroV5),
+            Self::PyAnnoteSegmentation => Some(ModelAsset::PyAnnoteSegmentation),
+            Self::PulseVadFp32 => Some(ModelAsset::PulseVadFp32),
+            Self::PulseVadInt8 => Some(ModelAsset::PulseVadInt8),
+            Self::FsmnVadFp32 => Some(ModelAsset::FsmnVadFp32),
+            Self::FsmnVadInt8 => Some(ModelAsset::FsmnVadInt8),
+            Self::TenVad => Some(ModelAsset::TenVad),
+            Self::MarbleNetFp32 => Some(ModelAsset::MarbleNetFp32),
+            Self::MarbleNetInt8 => Some(ModelAsset::MarbleNetInt8),
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub(super) enum OutputFormat {
@@ -80,13 +144,16 @@ pub(super) enum OutputType {
 #[command(version, long_about = None)]
 #[allow(clippy::struct_excessive_bools)] // Independent CLI switches map directly to runtime flags.
 pub(super) struct Args {
+    #[command(subcommand)]
+    pub(super) command: Option<Command>,
+
     /// Print the model info
     #[arg(long)]
     pub(super) print_model_info: Option<ModelInfo>,
 
     /// A path to VAD model
     #[arg(long)]
-    pub(super) model_path: PathBuf,
+    pub(super) model_path: Option<PathBuf>,
 
     /// Runtime variant
     #[arg(long, value_enum, default_value_t = Runtime::Candle)]
@@ -155,6 +222,7 @@ pub(super) struct Args {
 
 impl Args {
     pub(super) fn validate(&self) -> Result<()> {
+        anyhow::ensure!(self.model_path.is_some(), "--model-path must be provided");
         anyhow::ensure!(
             self.process_audio.is_some() || self.process_folder.is_some(),
             "Either --process-audio or --process-folder must be provided"
@@ -169,6 +237,12 @@ impl Args {
         );
         u32::try_from(self.sample_rate).context("sample rate exceeds u32")?;
         Ok(())
+    }
+
+    pub(super) fn model_path(&self) -> Result<&std::path::Path> {
+        self.model_path
+            .as_deref()
+            .context("--model-path must be provided")
     }
 
     pub(super) fn vad_params(&self) -> VadParams {
@@ -207,6 +281,33 @@ mod tests {
             "audio.wav",
         ]);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn download_does_not_require_processing_arguments() {
+        let args = Args::try_parse_from(["extract-speech", "download", "silero"])
+            .expect("download subcommand should parse without inference arguments");
+        assert_eq!(
+            args.command,
+            Some(Command::Download(DownloadArgs {
+                asset: DownloadAsset::SileroV5,
+                cache_dir: None,
+            }))
+        );
+    }
+
+    #[test]
+    fn download_accepts_a_cache_directory_and_asset_aliases() {
+        let args =
+            Args::try_parse_from(["extract-speech", "download", "ort", "--cache-dir", "cache"])
+                .expect("download aliases and options should parse");
+        assert_eq!(
+            args.command,
+            Some(Command::Download(DownloadArgs {
+                asset: DownloadAsset::OnnxRuntime,
+                cache_dir: Some(PathBuf::from("cache")),
+            }))
+        );
     }
 
     #[test]
