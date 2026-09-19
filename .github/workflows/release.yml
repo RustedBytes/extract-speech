@@ -142,6 +142,8 @@ jobs:
             3.12
             3.13
             3.14
+            3.15
+          allow-prereleases: true
 
       - name: Install uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -167,7 +169,7 @@ jobs:
           before-script-linux: bash scripts/install-protoc-manylinux.sh
           args: >-
             --release --locked --out dist
-            --interpreter 3.9 3.10 3.11 3.12 3.13 3.14
+            --interpreter 3.9 3.10 3.11 3.12 3.13 3.14 3.15
 
       - name: Smoke-test wheels
         run: uv run --no-project python scripts/test-release-wheels.py dist

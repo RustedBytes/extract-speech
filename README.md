@@ -79,7 +79,7 @@ segments = detector.detect(samples)
 ```
 
 Tagged [GitHub releases](https://github.com/RustedBytes/extract-speech/releases) also include prebuilt
-wheels for CPython 3.9–3.14. See the [Python guide](docs/python.md) for supported platforms, local
+wheels for CPython 3.9–3.15. See the [Python guide](docs/python.md) for supported platforms, local
 model paths, ONNX Runtime, buffer types, and download helpers.
 
 ## CLI quick start

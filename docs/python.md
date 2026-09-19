@@ -17,7 +17,7 @@ Alternatively, build a wheel:
 uv build --wheel
 ```
 
-Tagged GitHub releases contain prebuilt wheels for CPython 3.9 through 3.14 on
+Tagged GitHub releases contain prebuilt wheels for CPython 3.9 through 3.15 on
 manylinux x86-64, macOS ARM64, and Windows x86-64. Download the wheel matching
 your interpreter and platform, then install it into a uv environment:
 

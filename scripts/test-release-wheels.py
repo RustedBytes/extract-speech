@@ -13,11 +13,12 @@ EXPECTED_INTERPRETERS = {
     "cp312": "3.12",
     "cp313": "3.13",
     "cp314": "3.14",
+    "cp315": "3.15",
 }
 
 
 def interpreter_tag(wheel: Path) -> str:
-    match = re.search(r"-(cp3(?:9|10|11|12|13|14))-", wheel.name)
+    match = re.search(r"-(cp3(?:9|10|11|12|13|14|15))-", wheel.name)
     if match is None:
         raise ValueError(f"wheel has an unsupported interpreter tag: {wheel.name}")
     return match.group(1)
