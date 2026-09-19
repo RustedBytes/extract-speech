@@ -1,4 +1,4 @@
-//! Candle implementation of Silero VAD v5.
+//! Candle implementation of Silero VAD v5 and v6.
 
 use std::{collections::HashMap, path::PathBuf};
 

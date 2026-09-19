@@ -113,7 +113,7 @@ impl DetectorBuilder {
     fn build_candle(self) -> Result<Detector> {
         let backend = match self.model {
             Model::Silero => Backend::SileroCandle(crate::vad_iter::VadIter::new(
-                crate::silero_v5::Silero::new(
+                crate::models::silero::candle::Silero::new(
                     self.params.clone(),
                     self.model_path,
                     self.candle_device,
@@ -154,7 +154,7 @@ impl DetectorBuilder {
     fn build_onnxruntime(self) -> Result<Detector> {
         let backend = match self.model {
             Model::Silero => Backend::SileroOnnx(Box::new(crate::vad_iter::VadIter::new(
-                crate::silero_v5_ort::Silero::new(
+                crate::models::silero::onnx::Silero::new(
                     self.params.clone(),
                     self.execution_providers,
                     self.model_path,
@@ -262,13 +262,13 @@ impl Detector {
 #[allow(clippy::enum_variant_names)]
 enum Backend {
     #[cfg(feature = "candle")]
-    SileroCandle(crate::vad_iter::VadIter<crate::silero_v5::Silero>),
+    SileroCandle(crate::vad_iter::VadIter<crate::models::silero::candle::Silero>),
     #[cfg(feature = "candle")]
     PulseVadCandle(crate::pulsevad_iter::PulseVadIter<crate::pulsevad::PulseVad>),
     #[cfg(feature = "candle")]
     MarbleNetCandle(crate::marblenet_iter::MarbleNetIter<crate::marblenet::MarbleNet>),
     #[cfg(feature = "onnxruntime")]
-    SileroOnnx(Box<crate::vad_iter::VadIter<crate::silero_v5_ort::Silero>>),
+    SileroOnnx(Box<crate::vad_iter::VadIter<crate::models::silero::onnx::Silero>>),
     #[cfg(feature = "onnxruntime")]
     PyAnnoteOnnx(crate::pyannote_vad_iter::PyAnnoteVadIter),
     #[cfg(feature = "onnxruntime")]

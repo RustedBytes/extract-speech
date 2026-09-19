@@ -19,6 +19,8 @@ pub const ONNX_RUNTIME_VERSION: &str = "1.27.1";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ModelAsset {
+    /// Official Silero VAD v6 ONNX graph.
+    SileroV6,
     SileroV5,
     PyAnnoteSegmentation,
     PulseVadFp32,
@@ -32,7 +34,8 @@ pub enum ModelAsset {
 
 impl ModelAsset {
     /// Every model asset currently supported by [`AssetManager::model`].
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
+        Self::SileroV6,
         Self::SileroV5,
         Self::PyAnnoteSegmentation,
         Self::PulseVadFp32,
@@ -46,10 +49,15 @@ impl ModelAsset {
 
     fn spec(self) -> ModelSpec {
         match self {
+            Self::SileroV6 => ModelSpec {
+                directory: "silero-v6",
+                model_file: "silero_vad.onnx",
+                artifacts: &SILERO_V6_ARTIFACTS,
+            },
             Self::SileroV5 => ModelSpec {
                 directory: "silero-v5",
                 model_file: "model.onnx",
-                artifacts: &SILERO_ARTIFACTS,
+                artifacts: &SILERO_V5_ARTIFACTS,
             },
             Self::PyAnnoteSegmentation => ModelSpec {
                 directory: "pyannote-segmentation-3.0",
@@ -345,7 +353,12 @@ struct ModelSpec {
     artifacts: &'static [ArtifactSpec],
 }
 
-const SILERO_ARTIFACTS: [ArtifactSpec; 1] = [ArtifactSpec {
+const SILERO_V6_ARTIFACTS: [ArtifactSpec; 1] = [ArtifactSpec {
+    filename: "silero_vad.onnx",
+    url: "https://raw.githubusercontent.com/snakers4/silero-vad/60b7ffa243625ebdc1070275a29f18c87843786a/src/silero_vad/data/silero_vad.onnx",
+    sha256: "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+}];
+const SILERO_V5_ARTIFACTS: [ArtifactSpec; 1] = [ArtifactSpec {
     filename: "model.onnx",
     url: "https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx",
     sha256: "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808",

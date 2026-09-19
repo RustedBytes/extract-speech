@@ -12,7 +12,7 @@ fn main() -> Result<()> {
         .ok_or_else(|| Error::msg("usage: automatic-onnx-inference <audio-file>"))?;
 
     let assets = AssetManager::default_cache()?;
-    let bundle = assets.onnx_bundle(ModelAsset::SileroV5)?;
+    let bundle = assets.onnx_bundle(ModelAsset::SileroV6)?;
     let providers: Vec<ExecutionProviderDispatch> = vec![CPU::default().build()];
     init_onnx_runtime(bundle.runtime().library_path(), providers.clone())?;
 

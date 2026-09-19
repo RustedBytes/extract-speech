@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-19
+
+### Added
+
+- Silero VAD v6 support through Candle and ONNX Runtime, including a revision-pinned,
+  checksum-verified official model download while retaining Silero VAD v5 compatibility.
+
 ## [0.7.2] - 2026-09-16
 
 ### Added
@@ -149,7 +156,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.7.2...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/RustedBytes/extract-speech/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/RustedBytes/extract-speech/compare/v0.6.0...v0.7.0

@@ -7,7 +7,7 @@
 //! use extract_speech::{Detector, Model, Result, Runtime, VadParams};
 //!
 //! # fn main() -> Result<()> {
-//! let mut detector = Detector::builder("models/silero-vad-v5.onnx")
+//! let mut detector = Detector::builder("models/silero-vad-v6.onnx")
 //!     .model(Model::Silero)
 //!     .runtime(Runtime::Candle)
 //!     .parameters(VadParams {
@@ -56,8 +56,12 @@ pub use models::pulsevad::{frontend as pulsevad_frontend, iterator as pulsevad_i
 pub use models::pyannote::{iterator as pyannote_vad_iter, onnx as pyannote_vad_ort};
 #[cfg(feature = "candle")]
 pub use models::silero::candle as silero_v5;
+#[cfg(feature = "candle")]
+pub use models::silero::candle as silero_v6;
 #[cfg(feature = "onnxruntime")]
 pub use models::silero::onnx as silero_v5_ort;
+#[cfg(feature = "onnxruntime")]
+pub use models::silero::onnx as silero_v6_ort;
 #[cfg(feature = "onnxruntime")]
 pub use models::ten::onnx as ten_vad_ort;
 pub use vad::{config as utils, iterator as vad_iter};

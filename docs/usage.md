@@ -26,7 +26,7 @@ Write one WAV file per detected speech region:
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output clips
 ```
@@ -37,7 +37,7 @@ Write all detected regions into one output file:
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output-type concatenated \
   --output speech.wav
@@ -49,7 +49,7 @@ With `--output-type concatenated`, `--output` is the complete destination filena
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-folder recordings \
   --output output
 ```
@@ -90,7 +90,7 @@ For example:
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --threshold 0.5 \
   --output clips
@@ -104,7 +104,7 @@ PulseVAD, TEN VAD, and MarbleNet use a recommended starting threshold of `0.5`, 
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio denoised.wav \
   --source-audio original.wav \
   --output clips
@@ -118,7 +118,7 @@ Use `--metadata` to write a JSON summary:
 
 ```bash
 extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output clips \
   --metadata metadata.json
@@ -162,7 +162,7 @@ not set.
 
 ```bash
 RUST_LOG=extract_speech=debug extract-speech \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav
 ```
 

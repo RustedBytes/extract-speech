@@ -7,7 +7,7 @@
 
 It supports:
 
-- Silero VAD v5 through Candle or ONNX Runtime
+- Silero VAD v5 and v6 through Candle or ONNX Runtime
 - PulseVAD through Candle or ONNX Runtime
 - PyAnnote segmentation models through ONNX Runtime
 - FunASR FSMN-VAD FP32 and INT8 models through ONNX Runtime
@@ -28,7 +28,7 @@ Add the library to your project:
 
 ```toml
 [dependencies]
-extract-speech = "0.7"
+extract-speech = "0.8"
 ```
 
 Load a Silero model through Candle and run inference on normalized mono 16 kHz samples:
@@ -40,7 +40,7 @@ use extract_speech::{
 };
 
 fn main() -> Result<()> {
-    let model = AssetManager::default_cache()?.model(ModelAsset::SileroV5)?;
+    let model = AssetManager::default_cache()?.model(ModelAsset::SileroV6)?;
     let mut detector = Detector::builder(model.model_path())
         .model(Model::Silero)
         .runtime(Runtime::Candle)
@@ -97,7 +97,7 @@ Extract each detected speech region to a WAV file:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path .cache/extract-speech/models/silero-v5/model.onnx \
+  --model-path .cache/extract-speech/models/silero-v6/silero_vad.onnx \
   --process-audio input.wav \
   --output output
 ```
@@ -106,7 +106,7 @@ Create one file with the detected regions joined together:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path .cache/extract-speech/models/silero-v5/model.onnx \
+  --model-path .cache/extract-speech/models/silero-v6/silero_vad.onnx \
   --process-audio input.wav \
   --output-type concatenated \
   --output speech.wav
@@ -168,7 +168,7 @@ See the [development guide](docs/development.md) for the code layout and project
   month = sep,
   title = {{extract-speech: Extract speech from audio files using Voice Activity Detection models}},
   url = {https://github.com/RustedBytes/extract-speech},
-  version = {0.7.2},
+  version = {0.8.0},
   year = {2026}
 }
 ```

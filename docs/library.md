@@ -8,14 +8,14 @@ Use the default features to enable both inference engines:
 
 ```toml
 [dependencies]
-extract-speech = "0.7"
+extract-speech = "0.8"
 ```
 
 Select one engine when a smaller dependency graph is preferred:
 
 ```toml
 [dependencies]
-extract-speech = { version = "0.7", default-features = false, features = ["candle"] }
+extract-speech = { version = "0.8", default-features = false, features = ["candle"] }
 ```
 
 The available features are:
@@ -41,7 +41,7 @@ use extract_speech::{
 
 fn main() -> Result<()> {
     let assets = AssetManager::default_cache()?;
-    let files = assets.model(ModelAsset::SileroV5)?;
+    let files = assets.model(ModelAsset::SileroV6)?;
 
     let mut detector = Detector::builder(files.model_path())
         .model(Model::Silero)
@@ -54,7 +54,7 @@ fn main() -> Result<()> {
 }
 ```
 
-`AssetManager::all_models()` downloads all nine model variants with one call. To choose an application-specific cache location, use `AssetManager::new(path)`. Otherwise `AssetManager::default_cache()` uses:
+`AssetManager::all_models()` downloads all ten model variants with one call. To choose an application-specific cache location, use `AssetManager::new(path)`. Otherwise `AssetManager::default_cache()` uses:
 
 - `EXTRACT_SPEECH_CACHE_DIR` when set;
 - `%LOCALAPPDATA%/extract-speech` on Windows;
@@ -71,7 +71,7 @@ use extract_speech::{Detector, Model, Result, Runtime, VadParams, SAMPLE_RATE};
 fn detect(samples: &[f32]) -> Result<()> {
     assert_eq!(SAMPLE_RATE, 16_000);
 
-    let mut detector = Detector::builder("models/silero-vad-v5.onnx")
+    let mut detector = Detector::builder("models/silero-vad-v6.onnx")
         .model(Model::Silero)
         .runtime(Runtime::Candle)
         .parameters(VadParams {
@@ -106,7 +106,7 @@ use extract_speech::ort::ep::CPU;
 fn main() -> Result<()> {
     let providers = vec![CPU::default().build()];
     let assets = AssetManager::default_cache()?;
-    let bundle = assets.onnx_bundle(ModelAsset::SileroV5)?;
+    let bundle = assets.onnx_bundle(ModelAsset::SileroV6)?;
     init_onnx_runtime(bundle.runtime().library_path(), providers.clone())?;
 
     let mut detector = Detector::builder(bundle.model().model_path())
@@ -128,7 +128,7 @@ The automatic runtime bundle is the upstream CPU distribution. For CUDA or Tenso
 
 | Model | Candle | ONNX Runtime |
 | --- | --- | --- |
-| Silero VAD v5 | Yes | Yes |
+| Silero VAD v5 and v6 | Yes | Yes |
 | PulseVAD | FP32 | FP32 and INT8 |
 | PyAnnote segmentation | No | Yes |
 | FunASR FSMN-VAD | No | FP32 and INT8 |

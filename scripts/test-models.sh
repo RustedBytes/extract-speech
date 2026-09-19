@@ -47,7 +47,8 @@ download_file() {
     mv "$temporary_file" "$destination"
 }
 
-readonly SILERO_MODEL="$CACHE_DIR/silero-vad.onnx"
+readonly SILERO_V6_MODEL="$CACHE_DIR/silero-vad-v6.onnx"
+readonly SILERO_V5_MODEL="$CACHE_DIR/silero-vad-v5.onnx"
 readonly PYANNOTE_MODEL="$CACHE_DIR/pyannote-segmentation-3.0.onnx"
 readonly PULSEVAD_MODEL="$CACHE_DIR/pulsevad-2.1k.onnx"
 readonly PULSEVAD_INT8_MODEL="$CACHE_DIR/pulsevad-2.1k-int8.onnx"
@@ -61,11 +62,15 @@ readonly ONNXRUNTIME_ARCHIVE="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VER
 readonly ONNXRUNTIME_DIR="$CACHE_DIR/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}"
 readonly ONNXRUNTIME_LIBRARY="$ONNXRUNTIME_DIR/lib/libonnxruntime.so"
 
-# Hugging Face downloads are revision-pinned and checksum-verified.
+# Model downloads are revision-pinned and checksum-verified.
+download_file \
+    "https://raw.githubusercontent.com/snakers4/silero-vad/60b7ffa243625ebdc1070275a29f18c87843786a/src/silero_vad/data/silero_vad.onnx" \
+    "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3" \
+    "$SILERO_V6_MODEL"
 download_file \
     "https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx" \
     "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808" \
-    "$SILERO_MODEL"
+    "$SILERO_V5_MODEL"
 download_file \
     "https://huggingface.co/onnx-community/pyannote-segmentation-3.0/resolve/733a93b6473d019a773298e08cefa686894b1854/onnx/model.onnx" \
     "057ee564753071c0b09b5b611648b50ac188d50846bff5f01e9f7bbf1591ea25" \
@@ -191,12 +196,14 @@ readonly TEST_AUDIO_FILES=(
     "$REPO_DIR/test-audios/test_24khz.wav"
 )
 
-echo "Testing the public library API with Silero and test_16khz"
-"$LIBRARY_EXAMPLE" "$SILERO_MODEL" "$REPO_DIR/test-audios/test_16khz.wav" >/dev/null
+echo "Testing the public library API with Silero v6 and test_16khz"
+"$LIBRARY_EXAMPLE" "$SILERO_V6_MODEL" "$REPO_DIR/test-audios/test_16khz.wav" >/dev/null
 
 for audio_file in "${TEST_AUDIO_FILES[@]}"; do
-    run_case "silero-candle" "candle" "silero" "$SILERO_MODEL" "$audio_file"
-    run_case "silero-onnxruntime" "onnxruntime" "silero" "$SILERO_MODEL" "$audio_file"
+    run_case "silero-v6-candle" "candle" "silero" "$SILERO_V6_MODEL" "$audio_file"
+    run_case "silero-v6-onnxruntime" "onnxruntime" "silero" "$SILERO_V6_MODEL" "$audio_file"
+    run_case "silero-v5-candle" "candle" "silero" "$SILERO_V5_MODEL" "$audio_file"
+    run_case "silero-v5-onnxruntime" "onnxruntime" "silero" "$SILERO_V5_MODEL" "$audio_file"
     run_case "pulsevad-candle-fp32" "candle" "pulsevad" "$PULSEVAD_MODEL" "$audio_file"
     run_case "pulsevad-onnxruntime-fp32" "onnxruntime" "pulsevad" "$PULSEVAD_MODEL" "$audio_file"
     run_case "pulsevad-onnxruntime-int8" "onnxruntime" "pulsevad" "$PULSEVAD_INT8_MODEL" "$audio_file"
@@ -209,4 +216,4 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "The library API smoke test and all 36 CLI model integration cases passed."
+echo "The library API smoke test and all 42 CLI model integration cases passed."

@@ -1,4 +1,4 @@
-//! ONNX Runtime implementation of Silero VAD v5.
+//! ONNX Runtime implementation of Silero VAD v5 and v6.
 
 use std::path::PathBuf;
 

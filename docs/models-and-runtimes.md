@@ -6,7 +6,7 @@
 
 | VAD model | Candle | ONNX Runtime |
 | --- | --- | --- |
-| Silero VAD v5 | Supported | Supported |
+| Silero VAD v5 and v6 | Supported | Supported |
 | PulseVAD FP32 | Supported | Supported |
 | PulseVAD INT8 QDQ | Not supported | Supported |
 | PyAnnote segmentation | Not supported | Supported |
@@ -46,14 +46,22 @@ This call downloads both `model.onnx` and the required `vad.mvn`. Other `ModelAs
 
 ## Silero VAD
 
-For the default Candle backend, download the ONNX Community Silero export:
+The `silero` download alias selects the official Silero VAD v6 model. The older
+`silero-v5` asset remains available for compatibility:
+
+```bash
+extract-speech download silero
+extract-speech download silero-v5
+```
+
+To download the revision-pinned v6 graph manually:
 
 ```bash
 mkdir -p models
 curl -L \
-  https://huggingface.co/onnx-community/silero-vad/resolve/ddc9a7e80d6758f6fc795a1e8a04b798eb929d3a/onnx/model.onnx \
-  -o models/silero-vad-v5.onnx
-echo 'a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808  models/silero-vad-v5.onnx' \
+  https://raw.githubusercontent.com/snakers4/silero-vad/60b7ffa243625ebdc1070275a29f18c87843786a/src/silero_vad/data/silero_vad.onnx \
+  -o models/silero-vad-v6.onnx
+echo '1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3  models/silero-vad-v6.onnx' \
   | sha256sum --check
 ```
 
@@ -63,11 +71,13 @@ Run it with:
 extract-speech \
   --runtime candle \
   --vad-model silero \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio input.wav
 ```
 
-Compatible Silero exports must expose the expected `input`, `state`, and `sr` inputs and the `output` and `stateN` outputs.
+Both versions use the same frontend and recurrent-state contract. Compatible
+Silero exports must expose the expected `input`, `state`, and `sr` inputs and
+the `output` and `stateN` outputs.
 
 ## PulseVAD
 
@@ -232,7 +242,7 @@ Example:
 extract-speech \
   --runtime onnxruntime \
   --dylib-path /opt/onnxruntime/lib/libonnxruntime.so \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio input.wav
 ```
 
@@ -255,7 +265,7 @@ extract-speech \
   --runtime onnxruntime \
   --cuda \
   --dylib-path /opt/onnxruntime-gpu/lib/libonnxruntime.so \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio input.wav
 ```
 

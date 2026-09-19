@@ -59,7 +59,7 @@ Use the sample audio fixtures for manual smoke tests. A model file is not stored
 
 ```bash
 cargo run --features cli -- \
-  --model-path models/silero-vad-v5.onnx \
+  --model-path models/silero-vad-v6.onnx \
   --process-audio test-audios/test_16khz.wav \
   --output target/manual-output
 ```
@@ -71,7 +71,7 @@ just test-models
 # or: ./scripts/test-models.sh
 ```
 
-The suite downloads checksum-verified, revision-pinned Silero, PyAnnote, FunASR FSMN-VAD, TEN VAD, and MarbleNet ONNX models from Hugging Face, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It first exercises the public `Detector` API with a real Silero model, then runs every supported CLI model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures and validates each WAV output and metadata file.
+The suite downloads checksum-verified, revision-pinned Silero v5 and v6, PyAnnote, FunASR FSMN-VAD, TEN VAD, and MarbleNet ONNX models, PulseVAD models from its official repository, and ONNX Runtime for Linux x86-64. Downloads are cached under `target/model-test-cache`, and outputs are written to `target/model-test-output`. It first exercises the public `Detector` API with a real Silero v6 model, then runs every supported CLI model/runtime combination against the mono 16 kHz, stereo 16 kHz, and mono 24 kHz fixtures and validates each WAV output and metadata file.
 
 ## Design notes
 

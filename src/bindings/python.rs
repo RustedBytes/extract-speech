@@ -418,10 +418,15 @@ fn extract_samples(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Vec<f32
 fn parse_model(value: &str, quantized: bool) -> PyResult<ParsedModel> {
     let normalized = normalize_name(value);
     let parsed = match normalized.as_str() {
-        "silero" | "silero-v5" if !quantized => ParsedModel {
+        "silero" | "silero-v6" if !quantized => ParsedModel {
+            model: Model::Silero,
+            asset: ModelAsset::SileroV6,
+            name: "silero",
+        },
+        "silero-v5" if !quantized => ParsedModel {
             model: Model::Silero,
             asset: ModelAsset::SileroV5,
-            name: "silero",
+            name: "silero-v5",
         },
         "pyannote" | "pyannote-segmentation" if !quantized => ParsedModel {
             model: Model::PyAnnote,
@@ -510,6 +515,7 @@ const fn runtime_name(runtime: Runtime) -> &'static str {
 
 const fn asset_name(asset: ModelAsset) -> &'static str {
     match asset {
+        ModelAsset::SileroV6 => "silero-v6",
         ModelAsset::SileroV5 => "silero-v5",
         ModelAsset::PyAnnoteSegmentation => "pyannote-segmentation",
         ModelAsset::PulseVadFp32 => "pulsevad-fp32",
@@ -533,6 +539,14 @@ mod tests {
 
     #[test]
     fn accepts_python_model_aliases() {
+        assert_eq!(
+            parse_model("silero", false).unwrap().asset,
+            ModelAsset::SileroV6
+        );
+        assert_eq!(
+            parse_model("silero-v5", false).unwrap().asset,
+            ModelAsset::SileroV5
+        );
         assert_eq!(
             parse_model("pulse_vad", false).unwrap().model,
             Model::PulseVad

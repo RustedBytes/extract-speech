@@ -31,7 +31,9 @@ pub(super) enum DownloadAsset {
     /// Compatible CPU ONNX Runtime distribution
     #[value(name = "onnxruntime", alias = "onnx-runtime", alias = "ort")]
     OnnxRuntime,
-    #[value(name = "silero-v5", alias = "silero")]
+    #[value(name = "silero-v6", alias = "silero")]
+    SileroV6,
+    #[value(name = "silero-v5")]
     SileroV5,
     #[value(name = "pyannote-segmentation", alias = "pyannote")]
     PyAnnoteSegmentation,
@@ -55,6 +57,7 @@ impl DownloadAsset {
     pub(super) fn model_asset(self) -> Option<ModelAsset> {
         match self {
             Self::All | Self::OnnxRuntime => None,
+            Self::SileroV6 => Some(ModelAsset::SileroV6),
             Self::SileroV5 => Some(ModelAsset::SileroV5),
             Self::PyAnnoteSegmentation => Some(ModelAsset::PyAnnoteSegmentation),
             Self::PulseVadFp32 => Some(ModelAsset::PulseVadFp32),
@@ -290,7 +293,7 @@ mod tests {
         assert_eq!(
             args.command,
             Some(Command::Download(DownloadArgs {
-                asset: DownloadAsset::SileroV5,
+                asset: DownloadAsset::SileroV6,
                 cache_dir: None,
             }))
         );
