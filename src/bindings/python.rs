@@ -490,8 +490,7 @@ fn parse_runtime(value: &str) -> PyResult<Runtime> {
 }
 
 fn validate_runtime(model: ParsedModel, runtime: Runtime, quantized: bool) -> PyResult<()> {
-    if runtime == Runtime::Candle
-        && (matches!(model.model, Model::PyAnnote | Model::Fsmn | Model::Ten) || quantized)
+    if runtime == Runtime::Candle && (matches!(model.model, Model::Fsmn | Model::Ten) || quantized)
     {
         return Err(PyValueError::new_err(format!(
             "{}{} is only supported with ONNX Runtime",
@@ -569,6 +568,8 @@ mod tests {
 
     #[test]
     fn rejects_incompatible_candle_backends() {
+        let pyannote = parse_model("pyannote", false).unwrap();
+        assert!(validate_runtime(pyannote, Runtime::Candle, false).is_ok());
         let fsmn = parse_model("fsmn", false).unwrap();
         assert!(validate_runtime(fsmn, Runtime::Candle, false).is_err());
         let pulsevad = parse_model("pulsevad", true).unwrap();

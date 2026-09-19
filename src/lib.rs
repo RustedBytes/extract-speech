@@ -52,8 +52,12 @@ pub use models::pulsevad::candle as pulsevad;
 pub use models::pulsevad::onnx as pulsevad_ort;
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub use models::pulsevad::{frontend as pulsevad_frontend, iterator as pulsevad_iter};
+#[cfg(feature = "candle")]
+pub use models::pyannote::candle as pyannote_vad;
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
+pub use models::pyannote::iterator as pyannote_vad_iter;
 #[cfg(feature = "onnxruntime")]
-pub use models::pyannote::{iterator as pyannote_vad_iter, onnx as pyannote_vad_ort};
+pub use models::pyannote::onnx as pyannote_vad_ort;
 #[cfg(feature = "candle")]
 pub use models::silero::candle as silero_v5;
 #[cfg(feature = "candle")]

@@ -56,7 +56,7 @@ for segment in segments:
 
 `detect` accepts Python sequences and contiguous `float32` buffer objects, including `array.array("f")` and NumPy `float32` arrays. Audio must be normalized mono PCM sampled at 16 kHz. Model loading, downloads, and inference release the Python GIL.
 
-Supported model names are `silero`, `pyannote`, `pulsevad`, `fsmn`, `ten`, and `marblenet`. `silero` and `silero-v6` select Silero VAD v6; use `silero-v5` for the retained v5 model. Pass `quantized=True` for the PulseVAD, FSMN, or MarbleNet INT8 model. PyAnnote, FSMN, TEN, and all INT8 variants require `runtime="onnxruntime"`.
+Supported model names are `silero`, `pyannote`, `pulsevad`, `fsmn`, `ten`, and `marblenet`. `silero` and `silero-v6` select Silero VAD v6; use `silero-v5` for the retained v5 model. Pass `quantized=True` for the PulseVAD, FSMN, or MarbleNet INT8 model. FSMN, TEN, and all INT8 variants require `runtime="onnxruntime"`.
 
 ## Automatic ONNX Runtime loading
 

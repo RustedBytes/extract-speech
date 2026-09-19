@@ -3,20 +3,66 @@
 use log::debug;
 use ndarray::{ArrayView1, Axis, Ix3};
 
-use crate::{pyannote_vad_ort::PyAnnote, utils, vad_iter};
+use crate::{utils, vad_iter};
 
 const FRAME_STEP_SAMPLES: usize = 270;
 
+/// Backend contract used by the `PyAnnote` segmentation iterator.
+pub trait PyAnnoteModel {
+    /// Resets model state before an independent waveform.
+    fn reset(&mut self);
+
+    /// Computes frame-level segmentation logits.
+    ///
+    /// # Errors
+    ///
+    /// Returns backend-specific inference or tensor conversion errors.
+    fn get_frame_probabilities(
+        &mut self,
+        audio_samples: &[f32],
+    ) -> anyhow::Result<ndarray::ArrayD<f32>>;
+}
+
+#[cfg(feature = "candle")]
+impl PyAnnoteModel for crate::models::pyannote::candle::PyAnnote {
+    fn reset(&mut self) {
+        Self::reset(self);
+    }
+
+    fn get_frame_probabilities(
+        &mut self,
+        audio_samples: &[f32],
+    ) -> anyhow::Result<ndarray::ArrayD<f32>> {
+        Self::get_frame_probabilities(self, audio_samples)
+    }
+}
+
+#[cfg(feature = "onnxruntime")]
+impl PyAnnoteModel for crate::models::pyannote::onnx::PyAnnote {
+    fn reset(&mut self) {
+        Self::reset(self);
+    }
+
+    fn get_frame_probabilities(
+        &mut self,
+        audio_samples: &[f32],
+    ) -> anyhow::Result<ndarray::ArrayD<f32>> {
+        Self::get_frame_probabilities(self, audio_samples)
+    }
+}
+
 #[derive(Debug)]
-pub struct PyAnnoteVadIter {
-    pyannote: PyAnnote,
+/// Runtime-independent `PyAnnote` segmentation iterator.
+pub struct PyAnnoteVadIterator<M> {
+    pyannote: M,
     params: utils::VadParams,
     speeches: Vec<utils::TimeStamp>,
 }
 
-impl PyAnnoteVadIter {
+impl<M: PyAnnoteModel> PyAnnoteVadIterator<M> {
+    /// Creates an iterator around a loaded `PyAnnote` backend.
     #[must_use]
-    pub fn new(pyannote: PyAnnote, params: utils::VadParams) -> Self {
+    pub fn new(pyannote: M, params: utils::VadParams) -> Self {
         debug!("PyAnnote vad_params: {params:?}");
 
         Self {
@@ -80,6 +126,14 @@ impl PyAnnoteVadIter {
         )
     }
 }
+
+/// Compatibility name for the original ONNX Runtime iterator.
+#[cfg(feature = "onnxruntime")]
+pub type PyAnnoteVadIter = PyAnnoteVadIterator<crate::models::pyannote::onnx::PyAnnote>;
+
+/// PyAnnote iterator exposed by Candle-only builds.
+#[cfg(all(feature = "candle", not(feature = "onnxruntime")))]
+pub type PyAnnoteVadIter = PyAnnoteVadIterator<crate::models::pyannote::candle::PyAnnote>;
 
 fn softmax(x: &ArrayView1<'_, f32>) -> anyhow::Result<Vec<f32>> {
     anyhow::ensure!(!x.is_empty(), "PyAnnote returned an empty class dimension");

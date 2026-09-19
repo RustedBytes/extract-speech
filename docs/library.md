@@ -130,7 +130,7 @@ The automatic runtime bundle is the upstream CPU distribution. For CUDA or Tenso
 | --- | --- | --- |
 | Silero VAD v5 and v6 | Yes | Yes |
 | PulseVAD | FP32 | FP32 and INT8 |
-| PyAnnote segmentation | No | Yes |
+| PyAnnote segmentation | Yes | Yes |
 | FunASR FSMN-VAD | No | FP32 and INT8 |
 | TEN VAD | No | Yes |
 | NVIDIA Frame-VAD MarbleNet | FP32 | FP32 and INT8 |

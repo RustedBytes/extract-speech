@@ -6,7 +6,7 @@ pub mod fsmn;
 pub mod marblenet;
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod pulsevad;
-#[cfg(feature = "onnxruntime")]
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod pyannote;
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod silero;

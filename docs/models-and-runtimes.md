@@ -9,7 +9,7 @@
 | Silero VAD v5 and v6 | Supported | Supported |
 | PulseVAD FP32 | Supported | Supported |
 | PulseVAD INT8 QDQ | Not supported | Supported |
-| PyAnnote segmentation | Not supported | Supported |
+| PyAnnote segmentation | Supported | Supported |
 | FunASR FSMN-VAD FP32 | Not supported | Supported |
 | FunASR FSMN-VAD INT8 | Not supported | Supported |
 | TEN VAD | Not supported | Supported |
@@ -127,7 +127,17 @@ PulseVAD's reference threshold is `0.5`; pass it explicitly because the CLI-wide
 
 ## PyAnnote
 
-PyAnnote is available only through ONNX Runtime:
+PyAnnote is available through Candle and ONNX Runtime. Run the revision-pinned FP32 export with Candle:
+
+```bash
+extract-speech \
+  --runtime candle \
+  --vad-model pyannote \
+  --model-path models/pyannote-segmentation.onnx \
+  --process-audio input.wav
+```
+
+To use ONNX Runtime instead:
 
 ```bash
 extract-speech \

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- PyAnnote segmentation inference through Candle, including compatibility rewrites for ONNX operators not natively implemented by Candle.
+
 ## [0.8.0] - 2026-09-19
 
 ### Added

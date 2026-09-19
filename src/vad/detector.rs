@@ -128,6 +128,16 @@ impl DetectorBuilder {
                 )?,
                 self.params,
             )),
+            Model::PyAnnote => {
+                Backend::PyAnnoteCandle(crate::pyannote_vad_iter::PyAnnoteVadIterator::new(
+                    crate::pyannote_vad::PyAnnote::new(
+                        self.params.clone(),
+                        self.model_path,
+                        self.candle_device,
+                    )?,
+                    self.params,
+                ))
+            }
             Model::MarbleNet => {
                 Backend::MarbleNetCandle(crate::marblenet_iter::MarbleNetIter::new(
                     crate::marblenet::MarbleNet::new(
@@ -138,7 +148,7 @@ impl DetectorBuilder {
                     self.params,
                 ))
             }
-            Model::PyAnnote | Model::Fsmn | Model::Ten => {
+            Model::Fsmn | Model::Ten => {
                 bail!("{:?} is only supported with ONNX Runtime", self.model)
             }
         };
@@ -162,7 +172,7 @@ impl DetectorBuilder {
                 self.params,
             ))),
             Model::PyAnnote => {
-                Backend::PyAnnoteOnnx(crate::pyannote_vad_iter::PyAnnoteVadIter::new(
+                Backend::PyAnnoteOnnx(crate::pyannote_vad_iter::PyAnnoteVadIterator::new(
                     crate::pyannote_vad_ort::PyAnnote::new(
                         self.params.clone(),
                         self.execution_providers,
@@ -236,6 +246,8 @@ impl Detector {
             #[cfg(feature = "candle")]
             Backend::PulseVadCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "candle")]
+            Backend::PyAnnoteCandle(iter) => iter.process(samples)?,
+            #[cfg(feature = "candle")]
             Backend::MarbleNetCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "onnxruntime")]
             Backend::SileroOnnx(iter) => iter.process(samples)?,
@@ -266,11 +278,13 @@ enum Backend {
     #[cfg(feature = "candle")]
     PulseVadCandle(crate::pulsevad_iter::PulseVadIter<crate::pulsevad::PulseVad>),
     #[cfg(feature = "candle")]
+    PyAnnoteCandle(crate::pyannote_vad_iter::PyAnnoteVadIterator<crate::pyannote_vad::PyAnnote>),
+    #[cfg(feature = "candle")]
     MarbleNetCandle(crate::marblenet_iter::MarbleNetIter<crate::marblenet::MarbleNet>),
     #[cfg(feature = "onnxruntime")]
     SileroOnnx(Box<crate::vad_iter::VadIter<crate::models::silero::onnx::Silero>>),
     #[cfg(feature = "onnxruntime")]
-    PyAnnoteOnnx(crate::pyannote_vad_iter::PyAnnoteVadIter),
+    PyAnnoteOnnx(crate::pyannote_vad_iter::PyAnnoteVadIterator<crate::pyannote_vad_ort::PyAnnote>),
     #[cfg(feature = "onnxruntime")]
     PulseVadOnnx(crate::pulsevad_iter::PulseVadIter<crate::pulsevad_ort::PulseVad>),
     #[cfg(feature = "onnxruntime")]

@@ -31,7 +31,7 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 default = ["candle", "download", "onnxruntime"]
-candle = ["dep:candle-core", "dep:candle-onnx", "dep:rustfft"]
+candle = ["dep:candle-core", "dep:candle-onnx", "dep:ndarray", "dep:rustfft"]
 download = [
     "dep:flate2",
     "dep:sha2",
