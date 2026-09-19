@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Silero VAD v5 and v6 | Supported | Supported |
 | PulseVAD FP32 | Supported | Supported |
-| PulseVAD INT8 QDQ | Not supported | Supported |
+| PulseVAD INT8 QDQ | Supported (dequantized) | Supported |
 | PyAnnote segmentation | Supported | Supported |
 | FunASR FSMN-VAD FP32 | Supported | Supported |
 | FunASR FSMN-VAD INT8 | Supported (dequantized) | Supported |
@@ -105,7 +105,7 @@ extract-speech \
   --process-audio input.wav
 ```
 
-ONNX Runtime can use either the FP32 model or the QDQ-quantized INT8 model. Download and run the smaller INT8 graph with:
+Candle and ONNX Runtime can use either the FP32 model or the QDQ-quantized INT8 model. Download the smaller INT8 graph with:
 
 ```bash
 curl -L \
@@ -115,15 +115,14 @@ echo '416061347a1e723ed15163acd51006bf3c513b27bb9f57d85e2c694cc44b8389  models/p
   | sha256sum --check
 
 extract-speech \
-  --runtime onnxruntime \
+  --runtime candle \
   --vad-model pulsevad \
-  --dylib-path /path/to/libonnxruntime.so \
   --model-path models/pulsevad_2.1k_int8.onnx \
   --threshold 0.5 \
   --process-audio input.wav
 ```
 
-PulseVAD's reference threshold is `0.5`; pass it explicitly because the CLI-wide default remains `0.7`. Compatible PulseVAD exports must accept an input named `log_mel` shaped as `[batch, 64, 21]` and return two-class logits in an output named `logits`.
+Use `--runtime onnxruntime` and supply `--dylib-path` to execute the original QDQ graph. Candle dequantizes its constant INT8 weights at model load and bypasses activation QDQ pairs because Candle does not implement those operators. PulseVAD's reference threshold is `0.5`; pass it explicitly because the CLI-wide default remains `0.7`. Compatible PulseVAD exports must accept an input named `log_mel` shaped as `[batch, 64, 21]` and return two-class logits in an output named `logits`.
 
 ## PyAnnote
 
@@ -297,7 +296,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ, TEN VAD, and MarbleNet INT8 models. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for TEN VAD and MarbleNet INT8 models. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

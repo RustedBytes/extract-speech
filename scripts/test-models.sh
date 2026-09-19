@@ -205,6 +205,7 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "silero-v5-candle" "candle" "silero" "$SILERO_V5_MODEL" "$audio_file"
     run_case "silero-v5-onnxruntime" "onnxruntime" "silero" "$SILERO_V5_MODEL" "$audio_file"
     run_case "pulsevad-candle-fp32" "candle" "pulsevad" "$PULSEVAD_MODEL" "$audio_file"
+    run_case "pulsevad-candle-int8" "candle" "pulsevad" "$PULSEVAD_INT8_MODEL" "$audio_file"
     run_case "pulsevad-onnxruntime-fp32" "onnxruntime" "pulsevad" "$PULSEVAD_MODEL" "$audio_file"
     run_case "pulsevad-onnxruntime-int8" "onnxruntime" "pulsevad" "$PULSEVAD_INT8_MODEL" "$audio_file"
     run_case "pyannote-candle" "candle" "pyannote" "$PYANNOTE_MODEL" "$audio_file"
@@ -219,4 +220,4 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "The library API smoke test and all 51 CLI model integration cases passed."
+echo "The library API smoke test and all 54 CLI model integration cases passed."
