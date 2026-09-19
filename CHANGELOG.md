@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - PyAnnote segmentation inference through Candle, including compatibility rewrites for ONNX operators not natively implemented by Candle.
-- FunASR FSMN-VAD FP32 inference through Candle using the existing Kaldi-compatible frontend and recurrent cache processing.
+- FunASR FSMN-VAD FP32 and dequantized INT8 inference through Candle using the existing Kaldi-compatible frontend and recurrent cache processing.
 
 ## [0.8.0] - 2026-09-19
 

@@ -11,7 +11,7 @@
 | PulseVAD INT8 QDQ | Not supported | Supported |
 | PyAnnote segmentation | Supported | Supported |
 | FunASR FSMN-VAD FP32 | Supported | Supported |
-| FunASR FSMN-VAD INT8 | Not supported | Supported |
+| FunASR FSMN-VAD INT8 | Supported (dequantized) | Supported |
 | TEN VAD | Not supported | Supported |
 | NVIDIA Frame-VAD MarbleNet FP32 | Supported | Supported |
 | NVIDIA Frame-VAD MarbleNet INT8 | Not supported | Supported |
@@ -152,7 +152,7 @@ The exported model must accept mono audio shaped as `[batch, channel, samples]` 
 
 ## FunASR FSMN-VAD
 
-[FunASR FSMN-VAD](https://huggingface.co/funasr/fsmn-vad-onnx) FP32 is available through Candle and ONNX Runtime. The INT8 graph requires ONNX Runtime. Download either model graph together with its CMVN coefficients:
+[FunASR FSMN-VAD](https://huggingface.co/funasr/fsmn-vad-onnx) FP32 and INT8 graphs are available through Candle and ONNX Runtime. Download either model graph together with its CMVN coefficients:
 
 ```bash
 mkdir -p models/fsmn-vad
@@ -189,7 +189,7 @@ extract-speech \
   --process-audio input.wav
 ```
 
-The quantized `model_quant.onnx` file is used in the same way with ONNX Runtime. Keep `vad.mvn` (or the legacy name `am.mvn`) in the same directory as the selected ONNX file. `extract-speech` implements the model's 80-bin Kaldi filterbank, five-frame LFR stacking, CMVN, and recurrent FSMN cache inputs internally.
+The quantized `model_quant.onnx` file is used in the same way. Candle dequantizes its constant INT8 weights at model load because Candle does not implement the graph's dynamic integer matrix multiplication operators; ONNX Runtime executes the original quantized graph. Keep `vad.mvn` (or the legacy name `am.mvn`) in the same directory as the selected ONNX file. `extract-speech` implements the model's 80-bin Kaldi filterbank, five-frame LFR stacking, CMVN, and recurrent FSMN cache inputs internally.
 
 ## TEN VAD
 
@@ -297,7 +297,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ, FSMN-VAD INT8, TEN VAD, and MarbleNet INT8 models. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for the PulseVAD INT8 QDQ, TEN VAD, and MarbleNet INT8 models. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

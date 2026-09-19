@@ -490,7 +490,9 @@ fn parse_runtime(value: &str) -> PyResult<Runtime> {
 }
 
 fn validate_runtime(model: ParsedModel, runtime: Runtime, quantized: bool) -> PyResult<()> {
-    if runtime == Runtime::Candle && (model.model == Model::Ten || quantized) {
+    if runtime == Runtime::Candle
+        && (model.model == Model::Ten || (quantized && model.model != Model::Fsmn))
+    {
         return Err(PyValueError::new_err(format!(
             "{}{} is only supported with ONNX Runtime",
             model.name,
@@ -571,6 +573,8 @@ mod tests {
         assert!(validate_runtime(pyannote, Runtime::Candle, false).is_ok());
         let fsmn = parse_model("fsmn", false).unwrap();
         assert!(validate_runtime(fsmn, Runtime::Candle, false).is_ok());
+        let fsmn_int8 = parse_model("fsmn", true).unwrap();
+        assert!(validate_runtime(fsmn_int8, Runtime::Candle, true).is_ok());
         let pulsevad = parse_model("pulsevad", true).unwrap();
         assert!(validate_runtime(pulsevad, Runtime::Candle, true).is_err());
     }
