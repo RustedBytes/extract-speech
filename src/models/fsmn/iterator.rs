@@ -1,16 +1,42 @@
 //! FSMN-VAD-specific streaming iterator.
 
-use crate::{fsmn_vad_ort::FsmnVad, utils, vad_iter};
+use crate::{utils, vad_iter};
 
-pub struct FsmnVadIter {
-    model: FsmnVad,
+/// Backend contract used by the FSMN-VAD iterator.
+pub trait FsmnVadModel {
+    /// Computes frame-level speech probabilities for a waveform.
+    ///
+    /// # Errors
+    ///
+    /// Returns backend-specific preprocessing or inference errors.
+    fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>>;
+}
+
+#[cfg(feature = "candle")]
+impl FsmnVadModel for crate::models::fsmn::candle::FsmnVad {
+    fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>> {
+        Self::speech_probabilities(self, waveform)
+    }
+}
+
+#[cfg(feature = "onnxruntime")]
+impl FsmnVadModel for crate::models::fsmn::onnx::FsmnVad {
+    fn speech_probabilities(&mut self, waveform: &[f32]) -> anyhow::Result<Vec<f32>> {
+        Self::speech_probabilities(self, waveform)
+    }
+}
+
+/// Runtime-independent FSMN-VAD iterator.
+pub struct FsmnVadIterator<M> {
+    model: M,
     params: utils::VadParams,
     speeches: Vec<utils::TimeStamp>,
 }
 
-impl FsmnVadIter {
+impl<M: FsmnVadModel> FsmnVadIterator<M> {
+    /// Creates an iterator around a loaded FSMN-VAD backend.
     #[must_use]
-    pub fn new(model: FsmnVad, mut params: utils::VadParams) -> Self {
+    pub fn new(model: M, mut params: utils::VadParams) -> Self {
         params.frame_size = 10;
         Self {
             model,
@@ -34,3 +60,11 @@ impl FsmnVadIter {
         Ok(&self.speeches)
     }
 }
+
+/// Compatibility name for the original ONNX Runtime iterator.
+#[cfg(feature = "onnxruntime")]
+pub type FsmnVadIter = FsmnVadIterator<crate::models::fsmn::onnx::FsmnVad>;
+
+/// FSMN-VAD iterator exposed by Candle-only builds.
+#[cfg(all(feature = "candle", not(feature = "onnxruntime")))]
+pub type FsmnVadIter = FsmnVadIterator<crate::models::fsmn::candle::FsmnVad>;

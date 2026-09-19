@@ -36,10 +36,12 @@ pub mod vad;
 pub use assets as download;
 #[cfg(feature = "cli")]
 pub use audio::{opus, resampler};
+#[cfg(feature = "candle")]
+pub use models::fsmn::candle as fsmn_vad;
 #[cfg(feature = "onnxruntime")]
-pub use models::fsmn::{
-    frontend as fsmn_vad_frontend, iterator as fsmn_vad_iter, onnx as fsmn_vad_ort,
-};
+pub use models::fsmn::onnx as fsmn_vad_ort;
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
+pub use models::fsmn::{frontend as fsmn_vad_frontend, iterator as fsmn_vad_iter};
 #[cfg(feature = "candle")]
 pub use models::marblenet::candle as marblenet;
 #[cfg(feature = "onnxruntime")]

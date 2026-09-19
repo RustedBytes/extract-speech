@@ -1,6 +1,6 @@
 //! Model-specific inference implementations.
 
-#[cfg(feature = "onnxruntime")]
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod fsmn;
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod marblenet;

@@ -138,6 +138,14 @@ impl DetectorBuilder {
                     self.params,
                 ))
             }
+            Model::Fsmn => Backend::FsmnCandle(crate::fsmn_vad_iter::FsmnVadIterator::new(
+                crate::fsmn_vad::FsmnVad::new(
+                    self.model_path,
+                    self.candle_device,
+                    self.params.debug,
+                )?,
+                self.params,
+            )),
             Model::MarbleNet => {
                 Backend::MarbleNetCandle(crate::marblenet_iter::MarbleNetIter::new(
                     crate::marblenet::MarbleNet::new(
@@ -148,7 +156,7 @@ impl DetectorBuilder {
                     self.params,
                 ))
             }
-            Model::Fsmn | Model::Ten => {
+            Model::Ten => {
                 bail!("{:?} is only supported with ONNX Runtime", self.model)
             }
         };
@@ -189,7 +197,7 @@ impl DetectorBuilder {
                 )?,
                 self.params,
             )),
-            Model::Fsmn => Backend::FsmnOnnx(crate::fsmn_vad_iter::FsmnVadIter::new(
+            Model::Fsmn => Backend::FsmnOnnx(crate::fsmn_vad_iter::FsmnVadIterator::new(
                 crate::fsmn_vad_ort::FsmnVad::new(
                     self.execution_providers,
                     self.model_path,
@@ -248,6 +256,8 @@ impl Detector {
             #[cfg(feature = "candle")]
             Backend::PyAnnoteCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "candle")]
+            Backend::FsmnCandle(iter) => iter.process(samples)?,
+            #[cfg(feature = "candle")]
             Backend::MarbleNetCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "onnxruntime")]
             Backend::SileroOnnx(iter) => iter.process(samples)?,
@@ -280,6 +290,8 @@ enum Backend {
     #[cfg(feature = "candle")]
     PyAnnoteCandle(crate::pyannote_vad_iter::PyAnnoteVadIterator<crate::pyannote_vad::PyAnnote>),
     #[cfg(feature = "candle")]
+    FsmnCandle(crate::fsmn_vad_iter::FsmnVadIterator<crate::fsmn_vad::FsmnVad>),
+    #[cfg(feature = "candle")]
     MarbleNetCandle(crate::marblenet_iter::MarbleNetIter<crate::marblenet::MarbleNet>),
     #[cfg(feature = "onnxruntime")]
     SileroOnnx(Box<crate::vad_iter::VadIter<crate::models::silero::onnx::Silero>>),
@@ -288,7 +300,7 @@ enum Backend {
     #[cfg(feature = "onnxruntime")]
     PulseVadOnnx(crate::pulsevad_iter::PulseVadIter<crate::pulsevad_ort::PulseVad>),
     #[cfg(feature = "onnxruntime")]
-    FsmnOnnx(crate::fsmn_vad_iter::FsmnVadIter),
+    FsmnOnnx(crate::fsmn_vad_iter::FsmnVadIterator<crate::fsmn_vad_ort::FsmnVad>),
     #[cfg(feature = "onnxruntime")]
     TenOnnx(Box<crate::vad_iter::VadIter<crate::ten_vad_ort::TenVad>>),
     #[cfg(feature = "onnxruntime")]
