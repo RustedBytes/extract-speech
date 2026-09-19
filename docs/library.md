@@ -133,7 +133,7 @@ The automatic runtime bundle is the upstream CPU distribution. For CUDA or Tenso
 | PyAnnote segmentation | Yes | Yes |
 | FunASR FSMN-VAD | FP32 and dequantized INT8 | FP32 and INT8 |
 | TEN VAD | Yes | Yes |
-| NVIDIA Frame-VAD MarbleNet | FP32 | FP32 and INT8 |
+| NVIDIA Frame-VAD MarbleNet | FP32 and dequantized INT8 | FP32 and INT8 |
 
 See [Models and runtimes](models-and-runtimes.md) for compatible model files, pinned downloads used by the integration tests, and model-specific licensing notes.
 

@@ -14,7 +14,7 @@
 | FunASR FSMN-VAD INT8 | Supported (dequantized) | Supported |
 | TEN VAD | Supported | Supported |
 | NVIDIA Frame-VAD MarbleNet FP32 | Supported | Supported |
-| NVIDIA Frame-VAD MarbleNet INT8 | Not supported | Supported |
+| NVIDIA Frame-VAD MarbleNet INT8 | Supported (dequantized) | Supported |
 
 The internal VAD sample rate is 16 kHz for every backend.
 
@@ -229,9 +229,14 @@ curl -L \
   -o models/marblenet/marblenet.onnx
 echo '4ad3364be94d462b5fd4fa39910c24967dbb9dba436e27bcff7a88359515e491  models/marblenet/marblenet.onnx' \
   | sha256sum --check
+curl -L \
+  https://huggingface.co/TigreGotico/frame-vad-marblenet-onnx/resolve/e8786fe74e055954901eb553cc9c3145323981cc/marblenet_int8.onnx \
+  -o models/marblenet/marblenet_int8.onnx
+echo '9c4462323f9b576fd5e581d3c86b9b9b513468d18a79bcdcd3a2bcbcaab02699  models/marblenet/marblenet_int8.onnx' \
+  | sha256sum --check
 ```
 
-Run the FP32 model with Candle:
+Run either model with Candle:
 
 ```bash
 extract-speech \
@@ -242,7 +247,7 @@ extract-speech \
   --process-audio input.wav
 ```
 
-ONNX Runtime accepts both `marblenet.onnx` and `marblenet_int8.onnx`. Select it with `--runtime onnxruntime` and provide `--dylib-path` as shown for the other ONNX Runtime models.
+Candle and ONNX Runtime accept both `marblenet.onnx` and `marblenet_int8.onnx`. Candle dequantizes the INT8 graph's constant weights at model load and evaluates the graph in floating point. Select ONNX Runtime with `--runtime onnxruntime` and provide `--dylib-path` as shown for the other ONNX Runtime models.
 
 The model consumes 80-bin log-mel features and produces two-class logits at a 20 ms resolution. `extract-speech` implements the NeMo pre-emphasis, centered 512-point STFT, non-periodic Hann window, Slaney-normalized mel filterbank, and stable softmax internally. The model and its exports use the [NVIDIA Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/); review it before deployment.
 
@@ -297,7 +302,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for MarbleNet INT8 models. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

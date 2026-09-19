@@ -217,8 +217,9 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "ten-candle" "candle" "ten" "$TEN_MODEL" "$audio_file"
     run_case "ten-onnxruntime" "onnxruntime" "ten" "$TEN_MODEL" "$audio_file"
     run_case "marblenet-candle-fp32" "candle" "marblenet" "$MARBLENET_MODEL" "$audio_file"
+    run_case "marblenet-candle-int8" "candle" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
     run_case "marblenet-onnxruntime-fp32" "onnxruntime" "marblenet" "$MARBLENET_MODEL" "$audio_file"
     run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "The library API smoke test and all 57 CLI model integration cases passed."
+echo "The library API smoke test and all 60 CLI model integration cases passed."
