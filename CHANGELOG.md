@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-19
+
 ### Added
 
 - PyAnnote segmentation inference through Candle, including compatibility rewrites for ONNX operators not natively implemented by Candle.
@@ -14,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PulseVAD INT8 QDQ model compatibility through Candle by dequantizing constant weights and bypassing unsupported activation QDQ operators.
 - TEN VAD inference through Candle using shared reference-compatible feature extraction and recurrent state processing.
 - NVIDIA Frame-VAD MarbleNet INT8 inference through Candle by dequantizing constant weights and bypassing unsupported dynamic quantization operators.
+
+### Changed
+
+- Made PulseVAD the default model in the Rust API, CLI, and Python bindings.
 
 ## [0.8.0] - 2026-09-19
 
@@ -164,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.8.0...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/RustedBytes/extract-speech/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/RustedBytes/extract-speech/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/RustedBytes/extract-speech/compare/v0.7.0...v0.7.1

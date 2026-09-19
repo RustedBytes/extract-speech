@@ -163,7 +163,7 @@ pub(super) struct Args {
     pub(super) runtime: Runtime,
 
     /// VAD model type
-    #[arg(long, value_enum, default_value_t = VadModel::Silero)]
+    #[arg(long, value_enum, default_value_t = VadModel::PulseVad)]
     pub(super) vad_model: VadModel,
 
     /// Path to the ONNX runtime dynamic library
@@ -324,6 +324,7 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(args.output, PathBuf::from("output"));
+        assert_eq!(args.vad_model, VadModel::PulseVad);
     }
 
     #[test]

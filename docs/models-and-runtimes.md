@@ -266,6 +266,7 @@ Example:
 ```bash
 extract-speech \
   --runtime onnxruntime \
+  --vad-model silero \
   --dylib-path /opt/onnxruntime/lib/libonnxruntime.so \
   --model-path models/silero-vad-v6.onnx \
   --process-audio input.wav
@@ -288,6 +289,7 @@ CUDA example:
 ```bash
 extract-speech \
   --runtime onnxruntime \
+  --vad-model silero \
   --cuda \
   --dylib-path /opt/onnxruntime-gpu/lib/libonnxruntime.so \
   --model-path models/silero-vad-v6.onnx \

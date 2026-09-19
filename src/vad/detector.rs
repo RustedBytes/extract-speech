@@ -7,12 +7,14 @@ use anyhow::Result;
 use crate::{utils::VAD_SAMPLE_RATE, vad_iter, SpeechSegment, VadParams};
 
 /// A VAD model family supported by [`Detector`].
+///
+/// The default is [`Model::PulseVad`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Model {
-    #[default]
     Silero,
     PyAnnote,
+    #[default]
     PulseVad,
     Fsmn,
     Ten,
@@ -385,6 +387,11 @@ const fn ten_frame_size_ms() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pulsevad_is_the_default_model() {
+        assert_eq!(Model::default(), Model::PulseVad);
+    }
 
     #[test]
     fn rejects_non_vad_sample_rate() {

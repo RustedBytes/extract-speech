@@ -26,6 +26,7 @@ Write one WAV file per detected speech region:
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output clips
@@ -37,6 +38,7 @@ Write all detected regions into one output file:
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output-type concatenated \
@@ -49,6 +51,7 @@ With `--output-type concatenated`, `--output` is the complete destination filena
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-folder recordings \
   --output output
@@ -90,6 +93,7 @@ For example:
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --threshold 0.5 \
@@ -104,6 +108,7 @@ PulseVAD, TEN VAD, and MarbleNet use a recommended starting threshold of `0.5`, 
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio denoised.wav \
   --source-audio original.wav \
@@ -118,6 +123,7 @@ Use `--metadata` to write a JSON summary:
 
 ```bash
 extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav \
   --output clips \
@@ -162,6 +168,7 @@ not set.
 
 ```bash
 RUST_LOG=extract_speech=debug extract-speech \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio recording.wav
 ```
@@ -174,7 +181,7 @@ The processing interface remains available as top-level options. Downloads use `
 | --- | --- | --- |
 | `--model-path <PATH>` | ONNX model path; required for processing and inspection | — |
 | `--runtime <RUNTIME>` | `candle` or `onnxruntime` | `candle` |
-| `--vad-model <MODEL>` | `silero`, `pulsevad`, `pyannote`, `fsmn`, `ten`, or `marblenet` | `silero` |
+| `--vad-model <MODEL>` | `silero`, `pulsevad`, `pyannote`, `fsmn`, `ten`, or `marblenet` | `pulsevad` |
 | `--dylib-path <PATH>` | ONNX Runtime dynamic library; required for `onnxruntime` | — |
 | `--process-audio <PATH>` | Single audio file used for VAD | — |
 | `--process-folder <PATH>` | Directory of audio files used for VAD | — |

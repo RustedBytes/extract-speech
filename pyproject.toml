@@ -8,11 +8,12 @@ dynamic = ["version"]
 description = "Voice activity detection inference backed by Rust"
 readme = "README.md"
 requires-python = ">=3.9"
-license = "MIT"
+license = "MIT AND Apache-2.0"
 authors = [{ name = "Yehor Smoliakov" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Rust",

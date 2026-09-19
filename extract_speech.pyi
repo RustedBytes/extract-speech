@@ -29,7 +29,7 @@ class Detector:
         self,
         model_path: PathInput,
         *,
-        model: str = "silero",
+        model: str = "pulsevad",
         runtime: str = "candle",
         onnx_runtime_path: PathInput | None = None,
         threshold: float = 0.5,
@@ -41,7 +41,7 @@ class Detector:
     ) -> None: ...
     @staticmethod
     def from_pretrained(
-        model: str = "silero",
+        model: str = "pulsevad",
         *,
         runtime: str = "candle",
         quantized: bool = False,

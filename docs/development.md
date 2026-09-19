@@ -59,6 +59,7 @@ Use the sample audio fixtures for manual smoke tests. A model file is not stored
 
 ```bash
 cargo run --features cli -- \
+  --vad-model silero \
   --model-path models/silero-vad-v6.onnx \
   --process-audio test-audios/test_16khz.wav \
   --output target/manual-output

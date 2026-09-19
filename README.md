@@ -28,7 +28,7 @@ Add the library to your project:
 
 ```toml
 [dependencies]
-extract-speech = "0.8"
+extract-speech = "0.9"
 ```
 
 Load a Silero model through Candle and run inference on normalized mono 16 kHz samples:
@@ -73,7 +73,7 @@ uv sync --no-dev
 import array
 import extract_speech
 
-detector = extract_speech.Detector.from_pretrained("silero")
+detector = extract_speech.Detector.from_pretrained()
 samples = array.array("f", [0.0] * extract_speech.SAMPLE_RATE)
 segments = detector.detect(samples)
 ```
@@ -90,14 +90,14 @@ Install Rust and Protocol Buffers first; see the [installation guide](docs/insta
 git clone https://github.com/RustedBytes/extract-speech.git
 cd extract-speech
 cargo build --release --features cli
-./target/release/extract-speech download silero --cache-dir .cache/extract-speech
+./target/release/extract-speech download pulsevad --cache-dir .cache/extract-speech
 ```
 
 Extract each detected speech region to a WAV file:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path .cache/extract-speech/models/silero-v6/silero_vad.onnx \
+  --model-path .cache/extract-speech/models/pulsevad-fp32/pulsevad_2.1k.onnx \
   --process-audio input.wav \
   --output output
 ```
@@ -106,13 +106,13 @@ Create one file with the detected regions joined together:
 
 ```bash
 ./target/release/extract-speech \
-  --model-path .cache/extract-speech/models/silero-v6/silero_vad.onnx \
+  --model-path .cache/extract-speech/models/pulsevad-fp32/pulsevad_2.1k.onnx \
   --process-audio input.wav \
   --output-type concatenated \
   --output speech.wav
 ```
 
-The default runtime is Candle, the default detection threshold is `0.7`, and the default output sample rate is 16 kHz. Run `extract-speech --help` for the complete command reference.
+The default model is PulseVAD, the default runtime is Candle, the default detection threshold is `0.7`, and the default output sample rate is 16 kHz. Run `extract-speech --help` for the complete command reference.
 
 ## Cargo features
 
@@ -168,7 +168,7 @@ See the [development guide](docs/development.md) for the code layout and project
   month = sep,
   title = {{extract-speech: Extract speech from audio files using Voice Activity Detection models}},
   url = {https://github.com/RustedBytes/extract-speech},
-  version = {0.8.0},
+  version = {0.9.0},
   year = {2026}
 }
 ```

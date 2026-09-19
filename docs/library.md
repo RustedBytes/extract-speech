@@ -8,14 +8,14 @@ Use the default features to enable both inference engines:
 
 ```toml
 [dependencies]
-extract-speech = "0.8"
+extract-speech = "0.9"
 ```
 
 Select one engine when a smaller dependency graph is preferred:
 
 ```toml
 [dependencies]
-extract-speech = { version = "0.8", default-features = false, features = ["candle"] }
+extract-speech = { version = "0.9", default-features = false, features = ["candle"] }
 ```
 
 The available features are:

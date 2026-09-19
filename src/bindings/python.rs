@@ -114,7 +114,7 @@ impl PyDetector {
     #[pyo3(signature = (
         model_path,
         *,
-        model = "silero",
+        model = "pulsevad",
         runtime = "candle",
         onnx_runtime_path = None,
         threshold = 0.5,
@@ -173,7 +173,7 @@ impl PyDetector {
 
     #[staticmethod]
     #[pyo3(signature = (
-        model = "silero",
+        model = "pulsevad",
         *,
         runtime = "candle",
         quantized = false,
