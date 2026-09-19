@@ -214,10 +214,11 @@ for audio_file in "${TEST_AUDIO_FILES[@]}"; do
     run_case "fsmn-candle-int8" "candle" "fsmn" "$FSMN_INT8_MODEL" "$audio_file"
     run_case "fsmn-onnxruntime-fp32" "onnxruntime" "fsmn" "$FSMN_MODEL" "$audio_file"
     run_case "fsmn-onnxruntime-int8" "onnxruntime" "fsmn" "$FSMN_INT8_MODEL" "$audio_file"
+    run_case "ten-candle" "candle" "ten" "$TEN_MODEL" "$audio_file"
     run_case "ten-onnxruntime" "onnxruntime" "ten" "$TEN_MODEL" "$audio_file"
     run_case "marblenet-candle-fp32" "candle" "marblenet" "$MARBLENET_MODEL" "$audio_file"
     run_case "marblenet-onnxruntime-fp32" "onnxruntime" "marblenet" "$MARBLENET_MODEL" "$audio_file"
     run_case "marblenet-onnxruntime-int8" "onnxruntime" "marblenet" "$MARBLENET_INT8_MODEL" "$audio_file"
 done
 
-echo "The library API smoke test and all 54 CLI model integration cases passed."
+echo "The library API smoke test and all 57 CLI model integration cases passed."

@@ -12,7 +12,7 @@
 | PyAnnote segmentation | Supported | Supported |
 | FunASR FSMN-VAD FP32 | Supported | Supported |
 | FunASR FSMN-VAD INT8 | Supported (dequantized) | Supported |
-| TEN VAD | Not supported | Supported |
+| TEN VAD | Supported | Supported |
 | NVIDIA Frame-VAD MarbleNet FP32 | Supported | Supported |
 | NVIDIA Frame-VAD MarbleNet INT8 | Not supported | Supported |
 
@@ -192,7 +192,7 @@ The quantized `model_quant.onnx` file is used in the same way. Candle dequantize
 
 ## TEN VAD
 
-[TEN VAD](https://huggingface.co/TEN-framework/ten-vad) is available through ONNX Runtime. Download the official ONNX model:
+[TEN VAD](https://huggingface.co/TEN-framework/ten-vad) is available through Candle and ONNX Runtime. Download the official ONNX model:
 
 ```bash
 mkdir -p models/ten-vad
@@ -207,13 +207,14 @@ Run it with the reference `0.5` threshold:
 
 ```bash
 extract-speech \
-  --runtime onnxruntime \
+  --runtime candle \
   --vad-model ten \
-  --dylib-path /path/to/libonnxruntime.so \
   --model-path models/ten-vad/ten-vad.onnx \
   --threshold 0.5 \
   --process-audio input.wav
 ```
+
+To use ONNX Runtime instead, select `--runtime onnxruntime` and provide `--dylib-path` as shown for the other ONNX Runtime models.
 
 TEN VAD consumes mono 16 kHz audio in 256-sample (16 ms) frames. `extract-speech` supplies its reference pre-emphasis, STFT, 40-bin mel, LPC pitch, three-frame context, and recurrent-state processing. The model is distributed under TEN VAD's license, which adds conditions to Apache 2.0; review the upstream [`LICENSE`](https://huggingface.co/TEN-framework/ten-vad/blob/main/LICENSE) before deployment.
 
@@ -296,7 +297,7 @@ Confirm that `--dylib-path` points to the dynamic library file rather than its d
 
 ### Model inputs or outputs are missing
 
-The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for TEN VAD and MarbleNet INT8 models. Inspect a model's interface with:
+The ONNX file is not compatible with the selected `--vad-model` or runtime. In particular, use ONNX Runtime rather than Candle for MarbleNet INT8 models. Inspect a model's interface with:
 
 ```bash
 extract-speech --model-path model.onnx --print-model-info io

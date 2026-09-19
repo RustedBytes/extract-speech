@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use crate::{utils::VAD_SAMPLE_RATE, vad_iter, SpeechSegment, VadParams};
 
@@ -156,16 +156,21 @@ impl DetectorBuilder {
                     self.params,
                 ))
             }
-            Model::Ten => {
-                bail!("{:?} is only supported with ONNX Runtime", self.model)
-            }
+            Model::Ten => Backend::TenCandle(Box::new(crate::vad_iter::VadIter::new(
+                crate::ten_vad::TenVad::new(
+                    self.model_path,
+                    self.candle_device,
+                    self.params.debug,
+                )?,
+                self.params,
+            ))),
         };
         Ok(Detector { backend })
     }
 
     #[cfg(not(feature = "candle"))]
     fn build_candle(self) -> Result<Detector> {
-        bail!("Candle support is disabled; enable the `candle` Cargo feature")
+        anyhow::bail!("Candle support is disabled; enable the `candle` Cargo feature")
     }
 
     #[cfg(feature = "onnxruntime")]
@@ -223,7 +228,7 @@ impl DetectorBuilder {
 
     #[cfg(not(feature = "onnxruntime"))]
     fn build_onnxruntime(self) -> Result<Detector> {
-        bail!("ONNX Runtime support is disabled; enable the `onnxruntime` Cargo feature")
+        anyhow::bail!("ONNX Runtime support is disabled; enable the `onnxruntime` Cargo feature")
     }
 }
 
@@ -258,6 +263,8 @@ impl Detector {
             #[cfg(feature = "candle")]
             Backend::FsmnCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "candle")]
+            Backend::TenCandle(iter) => iter.process(samples)?,
+            #[cfg(feature = "candle")]
             Backend::MarbleNetCandle(iter) => iter.process(samples)?,
             #[cfg(feature = "onnxruntime")]
             Backend::SileroOnnx(iter) => iter.process(samples)?,
@@ -273,7 +280,7 @@ impl Detector {
             Backend::MarbleNetOnnx(iter) => iter.process(samples)?,
             #[cfg(not(any(feature = "candle", feature = "onnxruntime")))]
             Backend::Disabled => {
-                bail!("no inference runtime is enabled; enable `candle` or `onnxruntime`")
+                anyhow::bail!("no inference runtime is enabled; enable `candle` or `onnxruntime`")
             }
         };
         Ok(segments.to_vec())
@@ -291,6 +298,8 @@ enum Backend {
     PyAnnoteCandle(crate::pyannote_vad_iter::PyAnnoteVadIterator<crate::pyannote_vad::PyAnnote>),
     #[cfg(feature = "candle")]
     FsmnCandle(crate::fsmn_vad_iter::FsmnVadIterator<crate::fsmn_vad::FsmnVad>),
+    #[cfg(feature = "candle")]
+    TenCandle(Box<crate::vad_iter::VadIter<crate::ten_vad::TenVad>>),
     #[cfg(feature = "candle")]
     MarbleNetCandle(crate::marblenet_iter::MarbleNetIter<crate::marblenet::MarbleNet>),
     #[cfg(feature = "onnxruntime")]
@@ -369,14 +378,8 @@ pub fn init_onnx_runtime(
     Ok(())
 }
 
-#[cfg(feature = "onnxruntime")]
 const fn ten_frame_size_ms() -> usize {
-    crate::ten_vad_ort::FRAME_SAMPLES * 1_000 / VAD_SAMPLE_RATE
-}
-
-#[cfg(not(feature = "onnxruntime"))]
-const fn ten_frame_size_ms() -> usize {
-    16
+    crate::models::ten::frontend::FRAME_SAMPLES * 1_000 / VAD_SAMPLE_RATE
 }
 
 #[cfg(test)]

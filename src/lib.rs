@@ -68,6 +68,8 @@ pub use models::silero::candle as silero_v6;
 pub use models::silero::onnx as silero_v5_ort;
 #[cfg(feature = "onnxruntime")]
 pub use models::silero::onnx as silero_v6_ort;
+#[cfg(feature = "candle")]
+pub use models::ten::candle as ten_vad;
 #[cfg(feature = "onnxruntime")]
 pub use models::ten::onnx as ten_vad_ort;
 pub use vad::{config as utils, iterator as vad_iter};

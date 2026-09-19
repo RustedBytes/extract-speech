@@ -22,7 +22,7 @@ The available features are:
 
 | Feature | Default | Contents |
 | --- | --- | --- |
-| `candle` | Yes | Candle backends for Silero, PulseVAD, and MarbleNet |
+| `candle` | Yes | Candle backends for every supported FP32 model and selected INT8 models |
 | `onnxruntime` | Yes | ONNX Runtime backends for every supported model |
 | `download` | Yes | Revision-pinned, checksum-verified model and ONNX Runtime downloads |
 | `python` | No | PyO3 extension module, Python inference API, and download helpers |
@@ -132,7 +132,7 @@ The automatic runtime bundle is the upstream CPU distribution. For CUDA or Tenso
 | PulseVAD | FP32 and dequantized INT8 | FP32 and INT8 |
 | PyAnnote segmentation | Yes | Yes |
 | FunASR FSMN-VAD | FP32 and dequantized INT8 | FP32 and INT8 |
-| TEN VAD | No | Yes |
+| TEN VAD | Yes | Yes |
 | NVIDIA Frame-VAD MarbleNet | FP32 | FP32 and INT8 |
 
 See [Models and runtimes](models-and-runtimes.md) for compatible model files, pinned downloads used by the integration tests, and model-specific licensing notes.

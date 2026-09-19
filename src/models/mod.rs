@@ -10,5 +10,5 @@ pub mod pulsevad;
 pub mod pyannote;
 #[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod silero;
-#[cfg(feature = "onnxruntime")]
+#[cfg(any(feature = "candle", feature = "onnxruntime"))]
 pub mod ten;

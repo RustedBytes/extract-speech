@@ -11,7 +11,7 @@ It supports:
 - PulseVAD FP32 and INT8 graphs through Candle or ONNX Runtime
 - PyAnnote segmentation models through Candle or ONNX Runtime
 - FunASR FSMN-VAD FP32 and INT8 graphs through Candle or ONNX Runtime
-- TEN VAD through ONNX Runtime
+- TEN VAD through Candle or ONNX Runtime
 - NVIDIA Frame-VAD MarbleNet FP32 through Candle or ONNX Runtime, and INT8 through ONNX Runtime
 - WAV, MP3, FLAC, Ogg, Opus, M4A, and AAC input
 - WAV and Ogg Opus output
@@ -118,7 +118,7 @@ The default runtime is Candle, the default detection threshold is `0.7`, and the
 
 | Feature | Default | Provides |
 | --- | --- | --- |
-| `candle` | Yes | Silero, PulseVAD, PyAnnote, FSMN-VAD, and MarbleNet inference through Candle |
+| `candle` | Yes | Silero, PulseVAD, PyAnnote, FSMN-VAD, TEN VAD, and MarbleNet inference through Candle |
 | `onnxruntime` | Yes | All supported models through dynamically loaded ONNX Runtime |
 | `download` | Yes | Checksum-verified model bundles, ONNX Runtime downloads, and persistent caching |
 | `python` | No | PyO3 extension module with inference and download APIs |
@@ -129,7 +129,7 @@ The default runtime is Candle, the default detection threshold is `0.7`, and the
 
 | Runtime | Models | External runtime library | Acceleration |
 | --- | --- | --- | --- |
-| Candle | Silero, PulseVAD FP32/dequantized INT8, PyAnnote, FSMN-VAD FP32/dequantized INT8, MarbleNet FP32 | No | CPU |
+| Candle | Silero, PulseVAD FP32/dequantized INT8, PyAnnote, FSMN-VAD FP32/dequantized INT8, TEN VAD, MarbleNet FP32 | No | CPU |
 | ONNX Runtime | Silero, PulseVAD FP32/INT8, PyAnnote, FSMN-VAD FP32/INT8, TEN VAD, MarbleNet FP32/INT8 | Yes, supplied with `--dylib-path` | CPU, CUDA, TensorRT, CoreML |
 
 For ONNX Runtime setup and compatible model requirements, see [Models and runtimes](docs/models-and-runtimes.md).
