@@ -1,5 +1,7 @@
 # extract-speech
 
+[![Crates.io](https://img.shields.io/crates/v/extract-speech.svg)](https://crates.io/crates/extract-speech)
+[![PyPI version](https://img.shields.io/pypi/v/extract-speech.svg)](https://pypi.org/project/extract-speech/)
 [![Test Rust](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/test-rust.yml)
 [![Build](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml/badge.svg)](https://github.com/RustedBytes/extract-speech/actions/workflows/build.yml)
 
