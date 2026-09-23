@@ -7,6 +7,7 @@ import platform
 import sys
 import unittest
 import wave
+from importlib.metadata import version
 from pathlib import Path
 from typing import ClassVar
 
@@ -76,7 +77,7 @@ class PythonBindingsTest(unittest.TestCase):
     def test_module_metadata(self) -> None:
         self.assertEqual(extract_speech.SAMPLE_RATE, 16_000)
         self.assertEqual(extract_speech.Detector.SAMPLE_RATE, 16_000)
-        self.assertEqual(extract_speech.__version__, "0.9.0")
+        self.assertEqual(extract_speech.__version__, version("extract-speech"))
         self.assertEqual(self.detector.model, "silero")
         self.assertEqual(self.detector.runtime, "candle")
 
