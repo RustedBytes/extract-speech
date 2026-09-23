@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-23
+
 ### Added
 
 - CPython 3.15 release wheels and installation smoke tests.
@@ -175,7 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-format audio decoding, sample-rate conversion, model inspection, and configurable VAD thresholds.
 - Linux, macOS, and Windows build workflows.
 
-[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.9.0...HEAD
+[unreleased]: https://github.com/RustedBytes/extract-speech/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/RustedBytes/extract-speech/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/RustedBytes/extract-speech/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/RustedBytes/extract-speech/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/RustedBytes/extract-speech/compare/v0.7.1...v0.7.2
