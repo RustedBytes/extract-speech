@@ -17,9 +17,16 @@ Alternatively, build a wheel:
 uv build --wheel
 ```
 
-Tagged GitHub releases contain prebuilt wheels for CPython 3.9 through 3.15 on
-manylinux x86-64, macOS ARM64, and Windows x86-64. Download the wheel matching
-your interpreter and platform, then install it into a uv environment:
+Tagged releases publish prebuilt wheels for CPython 3.9 through 3.15 on manylinux
+x86-64, macOS ARM64, and Windows x86-64 to PyPI and the corresponding GitHub
+release. Install a compatible wheel from PyPI with:
+
+```bash
+uv add extract-speech
+```
+
+Alternatively, download the wheel matching your interpreter and platform from
+GitHub Releases, then install it into a uv environment:
 
 ```bash
 uv venv

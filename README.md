@@ -78,9 +78,11 @@ samples = array.array("f", [0.0] * extract_speech.SAMPLE_RATE)
 segments = detector.detect(samples)
 ```
 
-Tagged [GitHub releases](https://github.com/RustedBytes/extract-speech/releases) also include prebuilt
-wheels for CPython 3.9–3.15. See the [Python guide](docs/python.md) for supported platforms, local
-model paths, ONNX Runtime, buffer types, and download helpers.
+Tagged releases publish prebuilt wheels for CPython 3.9–3.15 to
+[PyPI](https://pypi.org/project/extract-speech/) and the corresponding
+[GitHub release](https://github.com/RustedBytes/extract-speech/releases). See the
+[Python guide](docs/python.md) for supported platforms, local model paths, ONNX Runtime, buffer
+types, and download helpers.
 
 ## CLI quick start
 
